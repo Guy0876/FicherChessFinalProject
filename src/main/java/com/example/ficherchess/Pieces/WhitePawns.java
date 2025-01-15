@@ -1,23 +1,25 @@
 package com.example.ficherchess.Pieces;
 
-public class BlackPawn extends Piece {
+public class WhitePawns extends Piece {
 
-    public BlackPawn(long bitboard) {
-        super(bitboard);
+    public WhitePawns(long bitboard, long allPieces) {
+        super(bitboard, allPieces);
     }
+
     @Override
     public long possibleMoves(long position) {
-// Ensure only the specific pawn is considered
         long specificPawn = bitboard & position;
 
-        // Example logic for black pawn movement
         // Move one step forward
-        long oneStepForward = specificPawn >> 8;
-        // Move two steps forward from the initial position
-        long twoStepsForward = (specificPawn & 0x00FF000000000000L) >> 16;
+        long oneStepForward = (specificPawn << 8) & ~allPieces;
+        long twoStepsForward = 0;
+        if (isPawnOnStartingPosition()) {
+            // Move two steps forward from the initial position
+            twoStepsForward = ((specificPawn & 0x000000000000FF00L) << 16) & ~allPieces & ~(allPieces << 8);
+        }
         // Capture diagonally
-        long captureLeft = (specificPawn & 0x7F7F7F7F7F7F7F7FL) >> 9;
-        long captureRight = (specificPawn & 0xFEFEFEFEFEFEFEFEL) >> 7;
+        long captureLeft = (specificPawn & 0x7F7F7F7F7F7F7F7FL) << 7 & allPieces;
+        long captureRight = (specificPawn & 0xFEFEFEFEFEFEFEFEL) << 9 & allPieces;
 
         return oneStepForward | twoStepsForward | captureLeft | captureRight;
     }
@@ -40,7 +42,7 @@ public class BlackPawn extends Piece {
         // Check if the pawn is capturing an opponent's piece
         return false; // Placeholder logic
     }
-    private boolean isPawnOnStrartingPosition() {
-        return (bitboard & 0x00FF000000000000L) != 0;
+    private boolean isPawnOnStartingPosition() {
+        return (bitboard & 0x0000000000000FF00L) != 0;
     }
 }
