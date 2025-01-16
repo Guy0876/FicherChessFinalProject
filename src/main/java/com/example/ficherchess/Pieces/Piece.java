@@ -2,11 +2,11 @@ package com.example.ficherchess.Pieces;
 
 public abstract class Piece {
     protected long bitboard;
-    protected long allPieces;
+    protected static long allPieces;
 
-    public Piece(long bitboard, long allPieces) {
+    public Piece(long bitboard) {
         this.bitboard = bitboard;
-        this.allPieces = allPieces;
+        Piece.allPieces |= bitboard;
     }
 
     public long getAllPieces() {
@@ -14,7 +14,7 @@ public abstract class Piece {
     }
 
     public void setAllPieces(long allPieces) {
-        this.allPieces = allPieces;
+        Piece.allPieces |= allPieces;
     }
     public long getBitboard() {
         return bitboard;

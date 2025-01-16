@@ -2,23 +2,23 @@ package com.example.ficherchess.Pieces;
 
 public class BlackPawns extends Piece {
 
-    public BlackPawns(long bitboard, long allPieces) {
-        super(bitboard, allPieces);
+    public BlackPawns(long bitboard) {
+        super(bitboard);
     }
     @Override
     public long possibleMoves(long position) {
         long specificPawn = bitboard & position;
 
         // Move one step forward
-        long oneStepForward = (specificPawn >> 8) & ~allPieces;
+        long oneStepForward = (specificPawn >> 8) & ~Piece.allPieces;
         long twoStepsForward = 0;
         if(isPawnOnStartingPosition()) {
             // Move two steps forward from the initial position
-            twoStepsForward = ((specificPawn & 0x00FF000000000000L) >> 16) & ~allPieces & ~(allPieces >> 8);
+            twoStepsForward = ((specificPawn & 0x00FF000000000000L) >> 16) & ~Piece.allPieces & ~(Piece.allPieces >> 8);
         }
         // Capture diagonally
-        long captureLeft = (specificPawn & 0x7F7F7F7F7F7F7F7FL) >> 9 & allPieces;
-        long captureRight = (specificPawn & 0xFEFEFEFEFEFEFEFEL) >> 7 & allPieces;
+        long captureLeft = (specificPawn & 0x7F7F7F7F7F7F7F7FL) >> 9 & Piece.allPieces;
+        long captureRight = (specificPawn & 0xFEFEFEFEFEFEFEFEL) >> 7 & Piece.allPieces;
 
         return oneStepForward | twoStepsForward | captureLeft | captureRight;
     }
