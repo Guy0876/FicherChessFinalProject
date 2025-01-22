@@ -9,6 +9,10 @@ public class Knights extends Piece {
     public long possibleMoves(long position) {
         long specificKnight = bitboard & position;
 
+        if(Piece.check){
+            return 0L;
+        }
+
         // Calculate all possible knight moves
         long move1 = (specificKnight & 0xFEFEFEFEFEFEFEFEL) << 15;
         long move2 = (specificKnight & 0xFCFCFCFCFCFCFCFCL) << 6;

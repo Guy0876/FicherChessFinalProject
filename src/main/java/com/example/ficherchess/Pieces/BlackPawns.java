@@ -8,6 +8,9 @@ public class BlackPawns extends Piece {
     @Override
     public long possibleMoves(long position) {
         long specificPawn = bitboard & position;
+        if(Piece.check){
+            return 0L;
+        }
 
         // Move one step forward
         long oneStepForward = (specificPawn >> 8) & ~Piece.allPieces;
