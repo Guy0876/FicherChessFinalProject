@@ -73,16 +73,18 @@ public class Controller implements IView {
     @FXML
     private void handleSquareClick(MouseEvent event) {
         StackPane square = (StackPane) event.getSource();
-        int row = GridPane.getRowIndex(square);
-        int col = GridPane.getColumnIndex(square);
+        Integer row = GridPane.getRowIndex(square);
+        Integer col = GridPane.getColumnIndex(square);
+
+        if (row == null || col == null) {
+            return;
+        }
 
         if (selectedPiece != null) {
             // Clicked on an empty square
             presenter.handlePieceMove(selectedRow, selectedCol, row, col);
-            removeSelectionHalo();
             selectedPiece = null;
-        }
-        else if (square.getChildren().size() > 0 && square.getChildren().get(0) instanceof ImageView) {
+        } else if (square.getChildren().size() > 0 && square.getChildren().get(0) instanceof ImageView) {
             // Clicked on a piece
             selectedPiece = (ImageView) square.getChildren().get(0);
             selectedRow = row;
@@ -93,14 +95,14 @@ public class Controller implements IView {
     }
 
     private void addSelectionHalo(int row, int col) {
-        StackPane square = (StackPane) getNodeByRowColumnIndex(row, col, chessBoard);
+        StackPane square = getNodeByRowColumnIndex(row, col, chessBoard);
         if (square != null) {
             square.getChildren().add(0, selectionHalo);
         }
     }
 
     private void removeSelectionHalo() {
-        StackPane square = (StackPane) getNodeByRowColumnIndex(selectedRow, selectedCol, chessBoard);
+        StackPane square = getNodeByRowColumnIndex(selectedRow, selectedCol, chessBoard);
         if (square != null) {
             square.getChildren().remove(selectionHalo);
         }
@@ -108,18 +110,35 @@ public class Controller implements IView {
 
     @Override
     public void movePiece(int oldRow, int oldCol, int newRow, int newCol) {
+        System.out.println("movePiece called: " + oldRow + "," + oldCol + " to " + newRow + "," + newCol);
         StackPane oldSquare = getNodeByRowColumnIndex(oldRow, oldCol, chessBoard);
         StackPane newSquare = getNodeByRowColumnIndex(newRow, newCol, chessBoard);
         if (oldSquare != null && newSquare != null) {
-            ImageView piece = (ImageView) oldSquare.getChildren().get(0);
-            oldSquare.getChildren().remove(piece);
-            newSquare.getChildren().add(piece);
+            System.out.println("Old square and new square found.");
+            ImageView piece = null;
+            for (javafx.scene.Node node : oldSquare.getChildren()) {
+                if (node instanceof ImageView) {
+                    piece = (ImageView) node;
+                    break;
+                }
+            }
+            if (piece != null) {
+                System.out.println("Piece found and moved.");
+                oldSquare.getChildren().remove(piece);
+                newSquare.getChildren().add(piece);
+            } else {
+                System.out.println("No piece found in the old square.");
+            }
+        } else {
+            System.out.println("Old square or new square not found.");
         }
     }
 
     private StackPane getNodeByRowColumnIndex(int row, int col, GridPane gridPane) {
         for (javafx.scene.Node node : gridPane.getChildren()) {
-            if (GridPane.getRowIndex(node) == row && GridPane.getColumnIndex(node) == col) {
+            Integer nodeRow = GridPane.getRowIndex(node);
+            Integer nodeCol = GridPane.getColumnIndex(node);
+            if (nodeRow != null && nodeCol != null && nodeRow == row && nodeCol == col) {
                 return (StackPane) node;
             }
         }

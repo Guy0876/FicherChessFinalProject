@@ -10,7 +10,7 @@ public class Application extends javafx.application.Application {
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(Application.class.getResource("Board.fxml"));
-        Scene scene = new Scene(fxmlLoader.load(), 320, 240);
+        Scene scene = new Scene(fxmlLoader.load(), 800, 800); // Adjusted size for chessboard
         stage.setTitle("Hello!");
         stage.setScene(scene);
         stage.show();
@@ -19,5 +19,6 @@ public class Application extends javafx.application.Application {
     public static void main(String[] args) {
         launch();
     }
+
 
 }

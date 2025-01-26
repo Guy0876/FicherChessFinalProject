@@ -1,28 +1,27 @@
 package com.example.ficherchess.Pieces;
 
-public class WhitePawns extends Piece {
+public class WhitePawns  extends Piece {
 
-    public WhitePawns(long bitboard) {
+    public WhitePawns (long bitboard) {
         super(bitboard);
     }
-
     @Override
     public long possibleMoves(long position) {
         long specificPawn = bitboard & position;
-
         if(Piece.check){
             return 0L;
         }
+
         // Move one step forward
-        long oneStepForward = (specificPawn << 8) & ~Piece.allPieces;
+        long oneStepForward = (specificPawn >> 8) & ~Piece.allPieces;
         long twoStepsForward = 0;
-        if (isPawnOnStartingPosition()) {
+        if(isPawnOnStartingPosition()) {
             // Move two steps forward from the initial position
-            twoStepsForward = ((specificPawn & 0x000000000000FF00L) << 16) & ~Piece.allPieces & ~(Piece.allPieces << 8);
+            twoStepsForward = ((specificPawn & 0x00FF000000000000L) >> 16) & ~Piece.allPieces & ~(Piece.allPieces >> 8);
         }
         // Capture diagonally
-        long captureLeft = (specificPawn & 0x7F7F7F7F7F7F7F7FL) << 7 & Piece.allPieces;
-        long captureRight = (specificPawn & 0xFEFEFEFEFEFEFEFEL) << 9 & Piece.allPieces;
+        long captureLeft = (specificPawn & 0x7F7F7F7F7F7F7F7FL) >> 9 & Piece.allPieces;
+        long captureRight = (specificPawn & 0xFEFEFEFEFEFEFEFEL) >> 7 & Piece.allPieces;
 
         return oneStepForward | twoStepsForward | captureLeft | captureRight;
     }
@@ -46,6 +45,6 @@ public class WhitePawns extends Piece {
         return false; // Placeholder logic
     }
     private boolean isPawnOnStartingPosition() {
-        return (bitboard & 0x0000000000000FF00L) != 0;
+        return (bitboard & 0x00FF000000000000L) != 0;
     }
 }

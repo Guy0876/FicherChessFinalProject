@@ -18,18 +18,18 @@ public class Model {
         initializeBoard();
     }
     public void initializeBoard() {
-        whitePieces.add(new WhitePawns(0xFF00L));
-        whitePieces.add(new Knights(0x42L));
-        whitePieces.add(new Bishops(0x24L));
-        whitePieces.add(new Rooks(0x81L));
-        whitePieces.add(new Queen(0x8L));
-        whitePieces.add(new King(0x10L));
-        blackPieces.add(new BlackPawns(0xFF000000000000L));
-        blackPieces.add(new Knights(0x4200000000000000L));
-        blackPieces.add(new Bishops(0x2400000000000000L));
-        blackPieces.add(new Rooks(0x8100000000000000L));
-        blackPieces.add(new Queen(0x800000000000000L));
-        blackPieces.add(new King(0x1000000000000000L));
+        whitePieces.add(new WhitePawns(0xFF000000000000L));
+        whitePieces.add(new Knights(0x4200000000000000L));
+        whitePieces.add(new Bishops(0x2400000000000000L));
+        whitePieces.add(new Rooks(0x8100000000000000L));
+        whitePieces.add(new Queen(0x800000000000000L));
+        whitePieces.add(new King(0x1000000000000000L));
+        blackPieces.add(new BlackPawns(0xFF00L));
+        blackPieces.add(new Knights(0x42L));
+        blackPieces.add(new Bishops(0x24L));
+        blackPieces.add(new Rooks(0x81L));
+        blackPieces.add(new Queen(0x8L));
+        blackPieces.add(new King(0x10L));
     }
     public static long indexToBitboard(int row, int col) {
         int index = row * 8 + col;
