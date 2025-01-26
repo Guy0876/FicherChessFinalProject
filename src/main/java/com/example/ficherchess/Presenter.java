@@ -1,14 +1,20 @@
 package com.example.ficherchess;
 
 public class Presenter {
-
-    private Model model;
     private IView view;
+    private Model model;
 
-
-    public Presenter(IView controller) {
+    public Presenter(IView view) {
+        this.view = view;
         this.model = new Model();
-        this.view = controller;
+    }
+
+    public void handlePieceSelection(int row, int col) {
+        model.setSelectedPiece(row, col);
+    }
+
+    public void handlePieceMove(int oldRow, int oldCol, int newRow, int newCol) {
+        if(model.isLegalMove(oldRow, oldCol, newRow, newCol))
+            view.movePiece(oldRow, oldCol, newRow, newCol);
     }
 }
-
