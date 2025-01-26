@@ -2,7 +2,7 @@ package com.example.ficherchess.Pieces;
 
 public abstract class Piece {
     protected long bitboard;
-    protected static long allPieces;
+    public static long allPieces;
     protected static boolean check;
 
     public Piece(long bitboard) {
