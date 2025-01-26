@@ -2,20 +2,12 @@ package com.example.ficherchess.Pieces;
 
 public abstract class Piece {
     protected long bitboard;
-    protected static long allPieces;
-    protected static long allWhitePieces;
-    protected static long allBlackPieces;
+    public static long allPieces;
     protected static boolean check;
 
-    public Piece(long bitboard, boolean isWhite) {
+    public Piece(long bitboard) {
         this.bitboard = bitboard;
         Piece.allPieces |= bitboard;
-        if(isWhite) {
-            Piece.allWhitePieces |= bitboard;
-        }
-        else {
-            Piece.allBlackPieces |= bitboard;
-        }
         Piece.check = false;
     }
 
