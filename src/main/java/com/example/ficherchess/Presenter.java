@@ -1,5 +1,7 @@
 package com.example.ficherchess;
 
+import com.example.ficherchess.Pieces.Piece;
+
 public class Presenter {
     private IView view;
     private Model model;
