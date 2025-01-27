@@ -64,10 +64,12 @@ public class Controller implements IView {
         imageView.setFitWidth(50);
         imageView.setFitHeight(50);
 
-        StackPane stackPane = new StackPane();
-        stackPane.getChildren().add(imageView);
-        stackPane.setOnMouseClicked(this::handleSquareClick);
-        chessBoard.add(stackPane, col, row);
+        StackPane stackPane = getNodeByRowColumnIndex(row, col, chessBoard);
+        if (stackPane != null) {
+            stackPane.getChildren().add(imageView);
+        } else {
+            System.err.println("No StackPane found at row: " + row + ", col: " + col);
+        }
     }
 
     @FXML
@@ -84,9 +86,9 @@ public class Controller implements IView {
             // Clicked on an empty square
             presenter.handlePieceMove(selectedRow, selectedCol, row, col);
             selectedPiece = null;
-        } else if (square.getChildren().size() > 0 && square.getChildren().get(0) instanceof ImageView) {
+        } else if (square.getChildren().size() > 1 && square.getChildren().get(1) instanceof ImageView) {
             // Clicked on a piece
-            selectedPiece = (ImageView) square.getChildren().get(0);
+            selectedPiece = (ImageView) square.getChildren().get(1);
             selectedRow = row;
             selectedCol = col;
             presenter.handlePieceSelection(selectedRow, selectedCol);
@@ -110,6 +112,7 @@ public class Controller implements IView {
 
     @Override
     public void movePiece(int oldRow, int oldCol, int newRow, int newCol) {
+        removeSelectionHalo();
         System.out.println("movePiece called: " + oldRow + "," + oldCol + " to " + newRow + "," + newCol);
         StackPane oldSquare = getNodeByRowColumnIndex(oldRow, oldCol, chessBoard);
         StackPane newSquare = getNodeByRowColumnIndex(newRow, newCol, chessBoard);
@@ -122,9 +125,23 @@ public class Controller implements IView {
                     break;
                 }
             }
+
             if (piece != null) {
                 System.out.println("Piece found and moved.");
                 oldSquare.getChildren().remove(piece);
+
+                // Remove any existing ImageView in the new square
+                ImageView existingPiece = null;
+                for (javafx.scene.Node node : newSquare.getChildren()) {
+                    if (node instanceof ImageView) {
+                        existingPiece = (ImageView) node;
+                        break;
+                    }
+                }
+                if (existingPiece != null) {
+                    newSquare.getChildren().remove(existingPiece);
+                }
+
                 newSquare.getChildren().add(piece);
             } else {
                 System.out.println("No piece found in the old square.");

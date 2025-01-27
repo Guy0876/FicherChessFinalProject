@@ -2,15 +2,13 @@ package com.example.ficherchess.Pieces;
 
 public class WhitePawns  extends Piece {
 
-    public WhitePawns (long bitboard) {
-        super(bitboard);
+    public WhitePawns (long bitboard, boolean isWhite) {
+        super(bitboard, isWhite);
     }
     @Override
     public long possibleMoves(long position) {
         long specificPawn = bitboard & position;
-        if(Piece.check){
-            return 0L;
-        }
+        long opponentPieces = isWhite ? blackPieces : whitePieces;
 
         // Move one step forward
         long oneStepForward = (specificPawn >> 8) & ~Piece.allPieces;
@@ -20,8 +18,8 @@ public class WhitePawns  extends Piece {
             twoStepsForward = ((specificPawn & 0x00FF000000000000L) >> 16) & ~Piece.allPieces & ~(Piece.allPieces >> 8);
         }
         // Capture diagonally
-        long captureLeft = (specificPawn & 0x7F7F7F7F7F7F7F7FL) >> 9 & Piece.allPieces;
-        long captureRight = (specificPawn & 0xFEFEFEFEFEFEFEFEL) >> 7 & Piece.allPieces;
+        long captureLeft = (specificPawn & 0x7F7F7F7F7F7F7F7FL) >> 9 & opponentPieces;
+        long captureRight = (specificPawn & 0xFEFEFEFEFEFEFEFEL) >> 7 & opponentPieces;
 
         return oneStepForward | twoStepsForward | captureLeft | captureRight;
     }

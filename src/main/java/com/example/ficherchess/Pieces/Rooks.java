@@ -2,8 +2,8 @@ package com.example.ficherchess.Pieces;
 
 public class Rooks extends Piece {
 
-    public Rooks(long bitboard) {
-        super(bitboard);
+    public Rooks(long bitboard, boolean isWhite) {
+        super(bitboard, isWhite);
     }
 
     @Override
