@@ -87,7 +87,7 @@ public class Model {
         }
     }
 
-    public long getPossibleMoves(long specificPiece) {
+  public long getPossibleMoves(long specificPiece) {
         long moves = 0L;
         if(isWhiteTurn) {
             for (Piece piece : whitePieces) {
@@ -105,7 +105,7 @@ public class Model {
             }
         }
         if(Piece.check) {
-            moves = filterMovesThatResolveCheck(selectedPiece, moves);
+            moves = filterMovesThatResolveCheck(selectedPiece, moves, specificPiece);
         }
         return moves;
     }
@@ -129,25 +129,72 @@ public class Model {
         return false;
     }
 
-    public boolean doesMoveResolveCheck(Piece piece, long movePosition) {
+    public boolean doesMoveResolveCheck(Piece piece, long movePosition, long specificPiece) {
         long originalPosition = piece.getBitboard();
-        piece.setBitboard(movePosition);
+        long originalAllPieces = Piece.allPieces;
+        long originalWhitePieces = Piece.whitePieces;
+        long originalBlackPieces = Piece.blackPieces;
+
+        // Save the state of the opponent piece that might be captured
+        Piece capturedPiece = null;
+        ArrayList<Piece> opponentPieces = piece.isWhite() ? blackPieces : whitePieces;
+        for (Piece opponentPiece : opponentPieces) {
+            if ((opponentPiece.getBitboard() & movePosition) != 0) {
+                capturedPiece = opponentPiece;
+                break;
+            }
+        }
+
+        // Make the move
+        piece.setBitboard(movePosition | (piece.getBitboard() & ~specificPiece));
+        Piece.allPieces = (Piece.allPieces & ~specificPiece) | movePosition;
+        if (piece.isWhite()) {
+            Piece.whitePieces = (Piece.whitePieces & ~specificPiece) | movePosition;
+        } else {
+            Piece.blackPieces = (Piece.blackPieces & ~specificPiece) | movePosition;
+        }
+        if (capturedPiece != null) {
+            capturedPiece.setBitboard(capturedPiece.getBitboard() & ~movePosition);
+            if (piece.isWhite()) {
+                Piece.blackPieces &= ~movePosition;
+            } else {
+                Piece.whitePieces &= ~movePosition;
+            }
+        }
+
         boolean isInCheck = isKingInCheck(piece.isWhite());
-        piece.setBitboard(originalPosition); // Revert the move
+
+        // Revert the move
+        piece.setBitboard(originalPosition);
+        Piece.allPieces = originalAllPieces;
+        if (piece.isWhite()) {
+            Piece.whitePieces = originalWhitePieces;
+        } else {
+            Piece.blackPieces = originalBlackPieces;
+        }
+        if (capturedPiece != null) {
+            capturedPiece.setBitboard(capturedPiece.getBitboard() | movePosition);
+            if (piece.isWhite()) {
+                Piece.blackPieces |= movePosition;
+            } else {
+                Piece.whitePieces |= movePosition;
+            }
+        }
+
         return !isInCheck;
     }
 
-    public long filterMovesThatResolveCheck(Piece piece, long moves) {
+    public long filterMovesThatResolveCheck(Piece piece, long moves, long specificPiece) {
         long validMoves = 0L;
         for (int i = 0; i < 64; i++) {
             long movePosition = 1L << i;
-            if ((moves & movePosition) != 0 && doesMoveResolveCheck(piece, movePosition)) {
+            if ((moves & movePosition) != 0 && doesMoveResolveCheck(piece, movePosition, specificPiece)) {
                 validMoves |= movePosition;
             }
         }
         return validMoves;
     }
-
+    
 
 
 }
