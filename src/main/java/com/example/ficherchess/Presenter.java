@@ -18,6 +18,8 @@ public class Presenter {
     public void handlePieceMove(int oldRow, int oldCol, int newRow, int newCol) {
         if (model.isLegalMove(oldRow, oldCol, newRow, newCol)) {
             view.movePiece(oldRow, oldCol, newRow, newCol);
+            if(Piece.check)
+                Piece.check = false;
         }
     }
 }
