@@ -6,13 +6,13 @@ public class Presenter {
     private IView view;
     private Model model;
 
-    public Presenter(IView view) {
+    public Presenter(IView view, FischerRandomChess fischerRandomChess) {
         this.view = view;
-        this.model = new Model();
+        this.model = new Model(fischerRandomChess);
     }
 
     public void handlePieceSelection(int row, int col) {
-        model.setSelectedPiece(row, col);
+        view.highlightPossibleMoves(model.setSelectedPiece(row, col));
     }
 
     public void handlePieceMove(int oldRow, int oldCol, int newRow, int newCol) {

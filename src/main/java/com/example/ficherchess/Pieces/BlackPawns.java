@@ -13,7 +13,7 @@ public class BlackPawns extends Piece {
         // Move one step forward
         long oneStepForward = (specificPawn << 8) & ~Piece.allPieces;
         long twoStepsForward = 0;
-        if (isPawnOnStartingPosition()) {
+        if (isPawnOnStartingPosition(specificPawn)) {
             // Move two steps forward from the initial position
             twoStepsForward = ((specificPawn & 0x000000000000FF00L) << 16) & ~Piece.allPieces & ~(Piece.allPieces << 8);
         }
@@ -41,7 +41,7 @@ public class BlackPawns extends Piece {
         // Check if the pawn is capturing an opponent's piece
         return false; // Placeholder logic
     }
-    private boolean isPawnOnStartingPosition() {
-        return (bitboard & 0x0000000000000FF00L) != 0;
+    private boolean isPawnOnStartingPosition(long specificPawn) {
+        return (specificPawn & 0x0000000000000FF00L) != 0;
     }
 }

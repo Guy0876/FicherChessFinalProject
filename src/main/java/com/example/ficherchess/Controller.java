@@ -1,5 +1,6 @@
 package com.example.ficherchess;
 
+import com.example.ficherchess.Pieces.King;
 import javafx.fxml.FXML;
 import javafx.scene.layout.GridPane;
 import javafx.scene.image.Image;
@@ -18,39 +19,41 @@ public class Controller implements IView {
     private int selectedCol;
     private Presenter presenter;
     private Circle selectionHalo;
+    private boolean isWhiteMove = true;
 
     public void initialize() {
-        presenter = new Presenter(this);
+        FischerRandomChess fischerRandomChess = new FischerRandomChess();
+        presenter = new Presenter(this, fischerRandomChess);
+
+        char[] startingPosition = fischerRandomChess.getStartingPosition();
 
         // Add white pieces
-        addPiece("white-rook.png", 7, 0);
-        addPiece("white-knight.png", 7, 1);
-        addPiece("white-bishop.png", 7, 2);
-        addPiece("white-queen.png", 7, 3);
-        addPiece("white-king.png", 7, 4);
-        addPiece("white-bishop.png", 7, 5);
-        addPiece("white-knight.png", 7, 6);
-        addPiece("white-rook.png", 7, 7);
         for (int i = 0; i < 8; i++) {
+            addPiece(getImageName(startingPosition[i], true), 7, i);
             addPiece("white-pawn.png", 6, i);
         }
 
         // Add black pieces
-        addPiece("black-rook.png", 0, 0);
-        addPiece("black-knight.png", 0, 1);
-        addPiece("black-bishop.png", 0, 2);
-        addPiece("black-queen.png", 0, 3);
-        addPiece("black-king.png", 0, 4);
-        addPiece("black-bishop.png", 0, 5);
-        addPiece("black-knight.png", 0, 6);
-        addPiece("black-rook.png", 0, 7);
         for (int i = 0; i < 8; i++) {
+            addPiece(getImageName(startingPosition[i], false), 0, i);
             addPiece("black-pawn.png", 1, i);
         }
 
         selectionHalo = new Circle(25, Color.TRANSPARENT);
         selectionHalo.setStroke(Color.RED);
         selectionHalo.setStrokeWidth(3);
+    }
+
+    private String getImageName(char piece, boolean isWhite) {
+        String colorPrefix = isWhite ? "white" : "black";
+        switch (piece) {
+            case 'R': return colorPrefix + "-rook.png";
+            case 'N': return colorPrefix + "-knight.png";
+            case 'B': return colorPrefix + "-bishop.png";
+            case 'Q': return colorPrefix + "-queen.png";
+            case 'K': return colorPrefix + "-king.png";
+            default: return "";
+        }
     }
 
     private void addPiece(String imageName, int row, int col) {
@@ -63,6 +66,7 @@ public class Controller implements IView {
         ImageView imageView = new ImageView(pieceImage);
         imageView.setFitWidth(50);
         imageView.setFitHeight(50);
+        imageView.setUserData(imagePath); // Store the imagePath in userData
 
         StackPane stackPane = getNodeByRowColumnIndex(row, col, chessBoard);
         if (stackPane != null) {
@@ -84,7 +88,12 @@ public class Controller implements IView {
 
         if (selectedPiece != null) {
             // Clicked on an empty square
+            if(isWhiteMove && selectedPiece.getUserData().toString().contains("white") ||
+               !isWhiteMove && selectedPiece.getUserData().toString().contains("black")) {
+                return; // Invalid move
+            }
             presenter.handlePieceMove(selectedRow, selectedCol, row, col);
+            removeSelectionHalo();
             selectedPiece = null;
         } else if (square.getChildren().size() > 1 && square.getChildren().get(1) instanceof ImageView) {
             // Clicked on a piece
@@ -112,24 +121,27 @@ public class Controller implements IView {
 
     @Override
     public void movePiece(int oldRow, int oldCol, int newRow, int newCol) {
-        removeSelectionHalo();
         System.out.println("movePiece called: " + oldRow + "," + oldCol + " to " + newRow + "," + newCol);
         StackPane oldSquare = getNodeByRowColumnIndex(oldRow, oldCol, chessBoard);
         StackPane newSquare = getNodeByRowColumnIndex(newRow, newCol, chessBoard);
         if (oldSquare != null && newSquare != null) {
             System.out.println("Old square and new square found.");
             ImageView piece = null;
+            boolean castle = true;
+            boolean white = false;
             for (javafx.scene.Node node : oldSquare.getChildren()) {
                 if (node instanceof ImageView) {
                     piece = (ImageView) node;
                     break;
                 }
             }
-
             if (piece != null) {
                 System.out.println("Piece found and moved.");
                 oldSquare.getChildren().remove(piece);
-
+                String piecePath = (String) piece.getUserData(); // Retrieve the imagePath from userData
+                if (piecePath != null && !piecePath.contains("king")) {
+                    castle = false;
+                }
                 // Remove any existing ImageView in the new square
                 ImageView existingPiece = null;
                 for (javafx.scene.Node node : newSquare.getChildren()) {
@@ -140,9 +152,54 @@ public class Controller implements IView {
                 }
                 if (existingPiece != null) {
                     newSquare.getChildren().remove(existingPiece);
+                    if (castle) {
+                        String existingPiecePath = (String) existingPiece.getUserData(); // Retrieve the imagePath from userData
+                        if (existingPiecePath != null && !existingPiecePath.contains("rook")) {
+                            castle = false;
+                        }
+                        if (existingPiecePath != null && existingPiecePath.contains("white")) {
+                            if (piecePath == null || !piecePath.contains("white")) {
+                                castle = false;
+                            }
+                            white = true;
+                        } else {
+                            if (piecePath == null || !piecePath.contains("black")) {
+                                castle = false;
+                            }
+                        }
+                    }
                 }
-
-                newSquare.getChildren().add(piece);
+                if (!castle) {
+                    newSquare.getChildren().add(piece);
+                } else {
+                    if (white) {
+                        if (oldCol < newCol) {
+                            StackPane rookSquare = getNodeByRowColumnIndex(7, 5, chessBoard);
+                            rookSquare.getChildren().add(existingPiece);
+                            StackPane kingSquare = getNodeByRowColumnIndex(7, 6, chessBoard);
+                            kingSquare.getChildren().add(piece);
+                        } else {
+                            StackPane rookSquare = getNodeByRowColumnIndex(7, 3, chessBoard);
+                            rookSquare.getChildren().add(existingPiece);
+                            StackPane kingSquare = getNodeByRowColumnIndex(7, 2, chessBoard);
+                            kingSquare.getChildren().add(piece);
+                        }
+                    } else {
+                        if (oldCol < newCol) {
+                            StackPane rookSquare = getNodeByRowColumnIndex(0, 5, chessBoard);
+                            rookSquare.getChildren().add(existingPiece);
+                            StackPane kingSquare = getNodeByRowColumnIndex(0, 6, chessBoard);
+                            kingSquare.getChildren().add(piece);
+                        } else {
+                            StackPane rookSquare = getNodeByRowColumnIndex(0, 3, chessBoard);
+                            rookSquare.getChildren().add(existingPiece);
+                            StackPane kingSquare = getNodeByRowColumnIndex(0, 2, chessBoard);
+                            kingSquare.getChildren().add(piece);
+                        }
+                    }
+                }
+                isWhiteMove = !isWhiteMove;
+                removePossibleMoveHighlights();
             } else {
                 System.out.println("No piece found in the old square.");
             }
@@ -160,5 +217,31 @@ public class Controller implements IView {
             }
         }
         return null;
+    }
+
+    @Override
+    public void highlightPossibleMoves(long possibleMoves) {
+        for (int i = 0; i < 64; i++) {
+            long movePosition = 1L << i;
+            if ((possibleMoves & movePosition) != 0) {
+                int moveRow = i / 8;
+                int moveCol = i % 8;
+                StackPane square = getNodeByRowColumnIndex(moveRow, moveCol, chessBoard);
+                if (square != null) {
+                    Circle moveHighlight = new Circle(10, Color.YELLOW);
+                    moveHighlight.setOpacity(0.5);
+                    square.getChildren().add(moveHighlight);
+                }
+            }
+        }
+    }
+
+    private void removePossibleMoveHighlights() {
+        for (javafx.scene.Node node : chessBoard.getChildren()) {
+            if (node instanceof StackPane) {
+                StackPane square = (StackPane) node;
+                square.getChildren().removeIf(child -> child instanceof Circle && ((Circle) child).getOpacity() == 0.5);
+            }
+        }
     }
 }
