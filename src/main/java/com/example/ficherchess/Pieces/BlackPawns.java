@@ -44,4 +44,9 @@ public class BlackPawns extends Piece {
     private boolean isPawnOnStartingPosition(long specificPawn) {
         return (specificPawn & 0x0000000000000FF00L) != 0;
     }
+
+    @Override
+    public BlackPawns clone() {
+        return (BlackPawns) super.clone();
+    }
 }

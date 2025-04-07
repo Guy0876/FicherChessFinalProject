@@ -18,4 +18,8 @@ public class Queen extends Piece{
         return moves;
     }
 
+    @Override
+    public Queen clone() {
+        return (Queen) super.clone();
+    }
 }

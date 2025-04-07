@@ -438,6 +438,25 @@ public class Model {
         return true;
     }
 
-
+    // get copy of model that i can change without it doing anything to the model
+    public Model getCopy() {
+        Model copy = new Model(frc);
+        copy.whitePieces = new ArrayList<>();
+        for (Piece piece : whitePieces) {
+            copy.whitePieces.add(piece.clone());
+        }
+        copy.blackPieces = new ArrayList<>();
+        for (Piece piece : blackPieces) {
+            copy.blackPieces.add(piece.clone());
+        }
+        copy.possibleMoves = possibleMoves;
+        copy.selectedPiece = selectedPiece != null ? selectedPiece.clone() : null;
+        copy.isWhiteTurn = isWhiteTurn;
+        copy.frc = frc;
+        copy.lastMovedPiece = lastMovedPiece != null ? lastMovedPiece.clone() : null;
+        copy.lastMove = lastMove.clone();
+        copy.enPassantPosition = enPassantPosition;
+        return copy;
+    }
 
 }

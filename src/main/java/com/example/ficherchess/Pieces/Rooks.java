@@ -33,4 +33,9 @@ public class Rooks extends Piece {
     public boolean getHasMovedLeft() {
         return hasMovedLeft;
     }
+
+    @Override
+    public Bishops clone() {
+        return (Bishops) super.clone();
+    }
 }

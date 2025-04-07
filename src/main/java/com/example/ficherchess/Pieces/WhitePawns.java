@@ -45,4 +45,10 @@ public class WhitePawns  extends Piece {
     private boolean isPawnOnStartingPosition(long specificPawn) {
         return (specificPawn & 0x00FF000000000000L) != 0;
     }
+
+    @Override
+    public WhitePawns clone() {
+        return (WhitePawns) super.clone();
+    }
+
 }

@@ -23,4 +23,9 @@ public class Knights extends Piece {
         // Combine all possible moves
         return move1 | move2 | move3 | move4 | move5 | move6 | move7 | move8;
     }
+
+    @Override
+    public Knights clone() {
+        return (Knights) super.clone();
+    }
 }

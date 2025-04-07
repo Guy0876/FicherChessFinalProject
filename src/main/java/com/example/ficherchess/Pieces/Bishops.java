@@ -10,4 +10,9 @@ public class Bishops extends Piece{
         long specificBishop = bitboard & position;
         return diagonalMoves(specificBishop);
     }
+
+    @Override
+    public Bishops clone() {
+        return (Bishops) super.clone();
+    }
 }

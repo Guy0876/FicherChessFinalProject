@@ -46,4 +46,9 @@ public class King extends Piece {
     public boolean getHasMoved() {
         return hasMoved;
     }
+
+    @Override
+    public King clone() {
+        return (King) super.clone();
+    }
 }

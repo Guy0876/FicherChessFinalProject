@@ -1,6 +1,6 @@
 package com.example.ficherchess.Pieces;
 import com.example.ficherchess.Model;
-public abstract class Piece {
+public abstract class Piece implements Cloneable{
     protected long bitboard;
     public static long allPieces;
     public static long whitePieces;
@@ -141,5 +141,14 @@ public abstract class Piece {
 
     public boolean isWhite() {
         return isWhite;
+    }
+
+    @Override
+    public Piece clone() {
+        try {
+            return (Piece) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError(); // Should never happen
+        }
     }
 }
