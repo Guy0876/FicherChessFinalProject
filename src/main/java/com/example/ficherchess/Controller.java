@@ -47,12 +47,18 @@ public class Controller implements IView {
     private String getImageName(char piece, boolean isWhite) {
         String colorPrefix = isWhite ? "white" : "black";
         switch (piece) {
-            case 'R': return colorPrefix + "-rook.png";
-            case 'N': return colorPrefix + "-knight.png";
-            case 'B': return colorPrefix + "-bishop.png";
-            case 'Q': return colorPrefix + "-queen.png";
-            case 'K': return colorPrefix + "-king.png";
-            default: return "";
+            case 'R':
+                return colorPrefix + "-rook.png";
+            case 'N':
+                return colorPrefix + "-knight.png";
+            case 'B':
+                return colorPrefix + "-bishop.png";
+            case 'Q':
+                return colorPrefix + "-queen.png";
+            case 'K':
+                return colorPrefix + "-king.png";
+            default:
+                return "";
         }
     }
 
@@ -85,12 +91,10 @@ public class Controller implements IView {
         if (row == null || col == null) {
             return;
         }
-
         if (selectedPiece != null) {
             // Clicked on an empty square
-            if(isWhiteMove && selectedPiece.getUserData().toString().contains("white") ||
-               !isWhiteMove && selectedPiece.getUserData().toString().contains("black")) {
-                return; // Invalid move
+            if(!isColor()) {
+                return;
             }
             presenter.handlePieceMove(selectedRow, selectedCol, row, col);
             removeSelectionHalo();
@@ -98,11 +102,24 @@ public class Controller implements IView {
         } else if (square.getChildren().size() > 1 && square.getChildren().get(1) instanceof ImageView) {
             // Clicked on a piece
             selectedPiece = (ImageView) square.getChildren().get(1);
+            if (!isColor()) {
+                selectedPiece = null;
+                return;
+            }
             selectedRow = row;
             selectedCol = col;
             presenter.handlePieceSelection(selectedRow, selectedCol);
             addSelectionHalo(selectedRow, selectedCol);
         }
+    }
+
+    private boolean isColor(){
+        if (isWhiteMove) {
+            if (selectedPiece.getUserData().toString().contains("black")) {return false;}
+        } else {
+            if (selectedPiece.getUserData().toString().contains("white")) {return false;}
+        }
+        return true;
     }
 
     private void addSelectionHalo(int row, int col) {
@@ -167,6 +184,19 @@ public class Controller implements IView {
                                 castle = false;
                             }
                         }
+                    }
+                }
+                else {
+                    if(piece.getUserData().toString().contains("pawn") && newCol != oldCol){
+                        int enPassantRow = isWhiteMove ? newRow + 1 : newRow - 1;
+                        StackPane enPassantSquare = getNodeByRowColumnIndex(enPassantRow, newCol, chessBoard);
+                        for (javafx.scene.Node node : enPassantSquare.getChildren()) {
+                            if (node instanceof ImageView) {
+                                existingPiece = (ImageView) node;
+                                break;
+                            }
+                        }
+                        enPassantSquare.getChildren().remove(existingPiece);
                     }
                 }
                 if (!castle) {

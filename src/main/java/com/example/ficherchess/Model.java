@@ -13,6 +13,7 @@ public class Model {
     private FischerRandomChess frc;
     private Piece lastMovedPiece;
     private int[] lastMove = new int[4];
+    private long enPassantPosition = 0L;
 
     public Model(FischerRandomChess fischerRandomChess) {
         whitePieces = new ArrayList<>();
@@ -169,6 +170,20 @@ public class Model {
 
         // Update the piece's position
         selectedPiece.setBitboard((selectedPiece.getBitboard() & ~oldPosition) | newPosition);
+        if((enPassantPosition & newPosition) != 0 && (selectedPiece instanceof WhitePawns || selectedPiece instanceof BlackPawns)) {
+            if(isWhiteTurn) {
+                enPassantPosition = indexToBitboard(newRow + 1, newCol);
+                blackPieces.get(0).setBitboard(blackPieces.get(0).getBitboard() & ~enPassantPosition);
+                Piece.blackPieces &= ~enPassantPosition;
+                Piece.allPieces &= ~enPassantPosition;
+            }
+            else {
+                enPassantPosition = indexToBitboard(newRow - 1, newCol);
+                whitePieces.get(0).setBitboard(whitePieces.get(0).getBitboard() & ~enPassantPosition);
+                Piece.whitePieces &= ~enPassantPosition;
+                Piece.allPieces &= ~enPassantPosition;
+            }
+        }
         Piece.allPieces &= ~oldPosition;
         Piece.allPieces |= newPosition;
         if (isWhiteTurn) {
@@ -197,7 +212,6 @@ public class Model {
             if (isLeftRook) rooks.setHasMovedLeft(true);
             else rooks.setHasMovedRight(true);
         }
-
         // Remove the captured opponent piece if any
         for (Piece opponentPiece : opponentPieces) {
             if ((opponentPiece.getBitboard() & newPosition) != 0) {
@@ -215,6 +229,7 @@ public class Model {
         isWhiteTurn = !isWhiteTurn;
         possibleMoves = 0L;
         selectedPiece = null;
+        enPassantPosition = 0L;
 
         // Check if the move puts the opponent's king in check
         if (isKingInCheck(!isWhiteTurn)) {
@@ -249,17 +264,17 @@ public class Model {
         // Handle en passant capture
         if (selectedPiece instanceof BlackPawns && lastMovedPiece instanceof WhitePawns ||
                 selectedPiece instanceof WhitePawns && lastMovedPiece instanceof BlackPawns) {
-            int oldRow = lastMove[2];
-            int oldCol = lastMove[3];
-            int newRow = lastMove[0];
-            int newCol = lastMove[1];
+            int oldRow = lastMove[0];
+            int oldCol = lastMove[1];
+            int newRow = lastMove[2];
+            int newCol = lastMove[3];
             if (Math.abs(newRow - oldRow) == 2) {
-                int enPassantRow = isWhiteTurn ? newRow + 1 : newRow - 1;
+                int enPassantRow = isWhiteTurn ? newRow - 1 : newRow + 1;
                 int enPassantCol = newCol;
                 long enPassantPosition = indexToBitboard(enPassantRow, enPassantCol);
                 int currentPawnRow = isWhiteTurn ? 3 : 4;
-                int currentPawnCol = (int) (Math.log(selectedPiece.getBitboard()) / Math.log(2)) % 8;
-                if (selectedPiece.getBitboard() == indexToBitboard(currentPawnRow, currentPawnCol) &&
+                int currentPawnCol = (int) (Math.log(selectedPiece.getBitboard() & specificPiece) / Math.log(2)) % 8;
+                if ((selectedPiece.getBitboard() & specificPiece) == indexToBitboard(currentPawnRow, currentPawnCol) &&
                         (currentPawnCol == enPassantCol - 1 || currentPawnCol == enPassantCol + 1)) {
                     moves |= enPassantPosition;
                 }

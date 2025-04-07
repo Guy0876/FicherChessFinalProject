@@ -12,7 +12,8 @@ public class Presenter {
     }
 
     public void handlePieceSelection(int row, int col) {
-        view.highlightPossibleMoves(model.setSelectedPiece(row, col));
+        long possibleMoves = model.setSelectedPiece(row, col);
+        view.highlightPossibleMoves(possibleMoves);
     }
 
     public void handlePieceMove(int oldRow, int oldCol, int newRow, int newCol) {
