@@ -98,6 +98,7 @@ public class Controller implements IView {
             }
             presenter.handlePieceMove(selectedRow, selectedCol, row, col);
             removeSelectionHalo();
+            removePossibleMoveHighlights();
             selectedPiece = null;
         } else if (square.getChildren().size() > 1 && square.getChildren().get(1) instanceof ImageView) {
             // Clicked on a piece

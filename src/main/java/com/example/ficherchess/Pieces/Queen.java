@@ -3,7 +3,7 @@ package com.example.ficherchess.Pieces;
 public class Queen extends Piece{
 
     public Queen(long bitboard, boolean isWhite) {
-        super(bitboard, isWhite);
+        super(bitboard, isWhite, 9);
     }
 
     @Override

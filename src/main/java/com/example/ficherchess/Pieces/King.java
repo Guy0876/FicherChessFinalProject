@@ -4,7 +4,7 @@ public class King extends Piece {
 
     private boolean hasMoved = false;
     public King(long bitboard, boolean isWhite) {
-        super(bitboard, isWhite);
+        super(bitboard, isWhite, 10);
     }
 
     @Override

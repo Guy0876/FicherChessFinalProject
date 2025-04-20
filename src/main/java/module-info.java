@@ -7,4 +7,6 @@ module com.example.ficherchess {
     exports com.example.ficherchess;
     exports com.example.ficherchess.Pieces;
     opens com.example.ficherchess.Pieces to javafx.fxml;
+    exports com.example.ficherchess.AutoMatedBot;
+    opens com.example.ficherchess.AutoMatedBot to javafx.fxml;
 }

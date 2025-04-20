@@ -5,11 +5,11 @@ public abstract class Piece implements Cloneable{
     public static long allPieces;
     public static long whitePieces;
     public static long blackPieces;
-    private static Model model;
     protected boolean isWhite;
     public static boolean check;
+    protected int weight;
 
-    public Piece(long bitboard, boolean isWhite) {
+    public Piece(long bitboard, boolean isWhite, int weight) {
         this.bitboard = bitboard;
         Piece.allPieces |= bitboard;
         Piece.check = false;
@@ -19,6 +19,11 @@ public abstract class Piece implements Cloneable{
         } else {
             Piece.blackPieces |= bitboard;
         }
+        this.weight = weight;
+    }
+
+    public int getWeight() {
+        return weight;
     }
 
     public long getAllPieces() {

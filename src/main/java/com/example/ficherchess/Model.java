@@ -3,10 +3,11 @@ package com.example.ficherchess;
 import com.example.ficherchess.Pieces.*;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 
 public class Model {
-    private ArrayList<Piece> whitePieces;
-    private ArrayList<Piece> blackPieces;
+    private ArrayList<ArrayList<Piece>> whitePieces;
+    private ArrayList<ArrayList<Piece>> blackPieces;
     private long possibleMoves;
     private Piece selectedPiece;
     private boolean isWhiteTurn;
@@ -23,20 +24,101 @@ public class Model {
         frc = fischerRandomChess;
         initializeBoard();
     }
+
     public void initializeBoard() {
-        whitePieces.add(new WhitePawns(frc.getWhitePawns(), true));
-        whitePieces.add(new Knights(frc.getWhiteKnights(), true));
-        whitePieces.add(new Bishops(frc.getWhiteBishops(), true));
-        whitePieces.add(new Rooks(frc.getWhiteRooks(), true));
-        whitePieces.add(new Queen(frc.getWhiteQueen(), true));
-        whitePieces.add(new King(frc.getWhiteKing(), true));
-        blackPieces.add(new BlackPawns(frc.getBlackPawns(), false));
-        blackPieces.add(new Knights(frc.getBlackKnights(), false));
-        blackPieces.add(new Bishops(frc.getBlackBishops(), false));
-        blackPieces.add(new Rooks(frc.getBlackRooks(), false));
-        blackPieces.add(new Queen(frc.getBlackQueen(), false));
-        blackPieces.add(new King(frc.getBlackKing(), false));
+        // Initialize white pieces
+        ArrayList<Piece> whitePawns = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            long bitboard = 1L << (48 + i); // Place pawns on the second rank (48 to 55)
+            whitePawns.add(new WhitePawn(bitboard, true));
+        }
+        whitePieces.add(whitePawns);
+
+        ArrayList<Piece> whiteKnights = new ArrayList<>();
+        long whiteKnightsBitboard = frc.getWhiteKnights();
+        for (int i = 0; i < 64; i++) {
+            long movePosition = 1L << i;
+            if ((movePosition & whiteKnightsBitboard) != 0) {
+                whiteKnights.add(new Knight(movePosition, true));
+            }
+        }
+        whitePieces.add(whiteKnights);
+
+        ArrayList<Piece> whiteBishops = new ArrayList<>();
+        long whiteBishopsBitboard = frc.getWhiteBishops();
+        for (int i = 0; i < 64; i++) {
+            long movePosition = 1L << i;
+            if ((movePosition & whiteBishopsBitboard) != 0) {
+                whiteBishops.add(new Bishop(movePosition, true));
+            }
+        }
+        whitePieces.add(whiteBishops);
+
+        ArrayList<Piece> whiteRooks = new ArrayList<>();
+        long whiteRooksBitboard = frc.getWhiteRooks();
+        for (int i = 0; i < 64; i++) {
+            long movePosition = 1L << i;
+            if ((movePosition & whiteRooksBitboard) != 0) {
+                whiteRooks.add(new Rook(movePosition, true));
+            }
+        }
+        whitePieces.add(whiteRooks);
+
+        ArrayList<Piece> whiteQueens = new ArrayList<>();
+        whiteQueens.add(new Queen(frc.getWhiteQueen(), true));
+        whitePieces.add(whiteQueens);
+
+        ArrayList<Piece> whiteKing = new ArrayList<>();
+        whiteKing.add(new King(frc.getWhiteKing(), true));
+        whitePieces.add(whiteKing);
+
+        // Initialize black pieces
+        ArrayList<Piece> blackPawns = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            long bitboard = 1L << (8 + i); // Place pawns on the seventh rank (8 to 15)
+            blackPawns.add(new BlackPawn(bitboard, false));
+        }
+        blackPieces.add(blackPawns);
+
+        ArrayList<Piece> blackKnights = new ArrayList<>();
+        long blackKnightsBitboard = frc.getBlackKnights();
+        for (int i = 0; i < 64; i++) {
+            long movePosition = 1L << i;
+            if ((movePosition & blackKnightsBitboard) != 0) {
+                blackKnights.add(new Knight(movePosition, false));
+            }
+        }
+        blackPieces.add(blackKnights);
+
+        ArrayList<Piece> blackBishops = new ArrayList<>();
+        long blackBishopsBitboard = frc.getBlackBishops();
+        for (int i = 0; i < 64; i++) {
+            long movePosition = 1L << i;
+            if ((movePosition & blackBishopsBitboard) != 0) {
+                blackBishops.add(new Bishop(movePosition, false));
+            }
+        }
+        blackPieces.add(blackBishops);
+
+        ArrayList<Piece> blackRooks = new ArrayList<>();
+        long blackRooksBitboard = frc.getBlackRooks();
+        for (int i = 0; i < 64; i++) {
+            long movePosition = 1L << i;
+            if ((movePosition & blackRooksBitboard) != 0) {
+                blackRooks.add(new Rook(movePosition, false));
+            }
+        }
+        blackPieces.add(blackRooks);
+
+        ArrayList<Piece> blackQueens = new ArrayList<>();
+        blackQueens.add(new Queen(frc.getBlackQueen(), false));
+        blackPieces.add(blackQueens);
+
+        ArrayList<Piece> blackKing = new ArrayList<>();
+        blackKing.add(new King(frc.getBlackKing(), false));
+        blackPieces.add(blackKing);
     }
+
     public static long indexToBitboard(int row, int col) {
         int index = row * 8 + col;
         if (index < 0 || index > 63) {
@@ -44,6 +126,7 @@ public class Model {
         }
         return 1L << index;
     }
+
     public long setSelectedPiece(int row, int col) {
         long specificPiece = indexToBitboard(row, col);
         possibleMoves = getPossibleMoves(specificPiece);
@@ -52,55 +135,55 @@ public class Model {
 
     public boolean isLegalMove(int oldRow, int oldCol, int newRow, int newCol) {
         long movePosition = indexToBitboard(newRow, newCol);
-        Rooks rooks = (Rooks)(isWhiteTurn ? whitePieces.get(3) : blackPieces.get(3));
-        if((rooks.getBitboard() & movePosition) != 0) {
-            King king = (King)(isWhiteTurn ? whitePieces.get(5) : blackPieces.get(5));
-            long oldPosition = indexToBitboard(oldRow, oldCol);
-            if(king.getBitboard() != oldPosition) return false;
-            boolean isLeftRook = selectedPiece.isWhite() ? king.getBitboard() > absolute(movePosition) : king.getBitboard() < movePosition;
-            if(king.getHasMoved() || (isLeftRook ? rooks.getHasMovedLeft() : rooks.getHasMovedRight())) {
-                return false;
-            }
-            long temp = king.getBitboard();
-            while((temp & rooks.getBitboard()) == 0){
-                if(isWhiteTurn){
-                    if(isLeftRook) temp >>>= 1;
-                    else temp <<= 1;
+        ArrayList<Piece> rookList = isWhiteTurn ? whitePieces.get(3) : blackPieces.get(3);
+        for (Piece piece : rookList) {
+            Rook rook = (Rook) piece;
+            if ((rook.getBitboard() & movePosition) != 0) {
+                long oldPosition = indexToBitboard(oldRow, oldCol);
+                ArrayList<Piece> kingList = isWhiteTurn ? whitePieces.get(5) : blackPieces.get(5);
+                King king = (King) kingList.get(0);
+                if (king.getBitboard() != oldPosition) return false;
+                boolean isLeftRook = selectedPiece.isWhite() ? king.getBitboard() > absolute(movePosition) : king.getBitboard() < movePosition;
+                if (king.getHasMoved() || (isLeftRook ? rook.getHasMovedLeft() : rook.getHasMovedRight())) {
+                    return false;
                 }
-                else {
-                    if(isLeftRook) temp <<= 1;
-                    else temp >>>= 1;
+                long temp = king.getBitboard();
+                while ((temp & rook.getBitboard()) == 0) {
+                    if (isWhiteTurn) {
+                        if (isLeftRook) temp >>>= 1;
+                        else temp <<= 1;
+                    } else {
+                        if (isLeftRook) temp <<= 1;
+                        else temp >>>= 1;
+                    }
+                    if (((temp & Piece.allPieces) & ~rook.getBitboard()) != 0) return false;
                 }
-                if(((temp & Piece.allPieces) & ~rooks.getBitboard()) != 0) return false;
+                long pieces = Piece.allPieces & ~king.getBitboard() & ~rook.getBitboard();
+                if (isLeftRook && !isWhiteTurn) {
+                    if ((pieces & 0x0000000000000060L) != 0) return false;
+                } else if (isLeftRook && isWhiteTurn) {
+                    if ((pieces & 0x0C00000000000000L) != 0) return false;
+                } else if (!isLeftRook && !isWhiteTurn) {
+                    if ((pieces & 0x000000000000000CL) != 0) return false;
+                } else if (!isLeftRook && isWhiteTurn) {
+                    if ((pieces & 0x6000000000000000L) != 0) return false;
+                }
+                return castle(movePosition, indexToBitboard(oldRow, oldCol), isLeftRook, king, rook);
             }
-            long pieces = Piece.allPieces & ~king.getBitboard() & ~rooks.getBitboard();
-            if(isLeftRook && !isWhiteTurn) {
-                if ((pieces & 0x0000000000000060L) != 0) return false;
-            }
-            else if(isLeftRook && isWhiteTurn) {
-                if ((pieces & 0x0C00000000000000L) != 0) return false;
-            }
-            else if(!isLeftRook && !isWhiteTurn) {
-                if ((pieces & 0x000000000000000CL) != 0) return false;
-            }
-            else if(!isLeftRook && isWhiteTurn) {
-                if ((pieces & 0x6000000000000000L) != 0) return false;
-            }
-            return castle(movePosition, indexToBitboard(oldRow, oldCol), isLeftRook, king, rooks);
         }
         boolean isLegal = (possibleMoves & movePosition) != 0;
-        if(isLegal)
+        if (isLegal)
             isLegal = updateTurn(oldRow, oldCol, newRow, newCol);
         return isLegal;
     }
 
-    public long absolute(long a){
-        if((a & 0x8000000000000000L) != 0) return 0x7888888888888888L;
+    public long absolute(long a) {
+        if ((a & 0x8000000000000000L) != 0) return 0x7888888888888888L;
         return a;
     }
 
-    private boolean castle(long movePosition, long oldPosition, boolean isLeftRook, King king, Rooks rooks) {
-        long oldRooks = rooks.getBitboard();
+    private boolean castle(long movePosition, long oldPosition, boolean isLeftRook, King king, Rook rook) {
+        long oldRooks = rook.getBitboard();
         long oldKing = king.getBitboard();
         long oldAllPieces = Piece.allPieces;
         long oldWhitePieces = Piece.whitePieces;
@@ -108,32 +191,31 @@ public class Model {
         long kingPosition = oldPosition;
         long rookPosition = movePosition;
         long newKingPosition, newRookPosition;
-        if(isWhiteTurn) {
-            newKingPosition = isLeftRook ? indexToBitboard(7, 2): indexToBitboard(7, 6);
-            newRookPosition = isLeftRook ? indexToBitboard(7, 3): indexToBitboard(7, 5);
-        }
-        else {
-            newKingPosition = isLeftRook ? indexToBitboard(0, 6): indexToBitboard(0, 2);
-            newRookPosition = isLeftRook ? indexToBitboard(0, 5): indexToBitboard(0, 3);
+        if (isWhiteTurn) {
+            newKingPosition = isLeftRook ? indexToBitboard(7, 2) : indexToBitboard(7, 6);
+            newRookPosition = isLeftRook ? indexToBitboard(7, 3) : indexToBitboard(7, 5);
+        } else {
+            newKingPosition = isLeftRook ? indexToBitboard(0, 6) : indexToBitboard(0, 2);
+            newRookPosition = isLeftRook ? indexToBitboard(0, 5) : indexToBitboard(0, 3);
         }
         king.setBitboard((king.getBitboard() & ~kingPosition) | newKingPosition);
-        rooks.setBitboard((rooks.getBitboard() & ~rookPosition) | newRookPosition);
+        rook.setBitboard((rook.getBitboard() & ~rookPosition) | newRookPosition);
         Piece.allPieces = (Piece.allPieces & ~kingPosition & ~rookPosition) | newKingPosition | newRookPosition;
-        if(isWhiteTurn) {
+        if (isWhiteTurn) {
             Piece.whitePieces = (Piece.whitePieces & ~kingPosition & ~rookPosition) | newKingPosition | newRookPosition;
         } else {
             Piece.blackPieces = (Piece.blackPieces & ~kingPosition & ~rookPosition) | newKingPosition | newRookPosition;
         }
-        if(isKingInCheck(isWhiteTurn) || isRookThreatened(isWhiteTurn, newRookPosition)) {
+        if (isKingInCheck(isWhiteTurn) || isRookThreatened(isWhiteTurn, newRookPosition)) {
             king.setBitboard(oldKing);
-            rooks.setBitboard(oldRooks);
+            rook.setBitboard(oldRooks);
             Piece.allPieces = oldAllPieces;
             Piece.whitePieces = oldWhitePieces;
             Piece.blackPieces = oldBlackPieces;
             return false;
         }
-        if(isLeftRook) rooks.setHasMovedLeft(true);
-        else rooks.setHasMovedRight(true);
+        if (isLeftRook) rook.setHasMovedLeft(true);
+        else rook.setHasMovedRight(true);
         king.setHasMoved(true);
         isWhiteTurn = !isWhiteTurn;
         possibleMoves = 0L;
@@ -142,44 +224,44 @@ public class Model {
         return true;
     }
 
-    public boolean isRookThreatened(boolean isWhite, long rookPosition){
-        ArrayList<Piece> opponentPieces = isWhite ? blackPieces : whitePieces;
-        for (Piece piece : opponentPieces) {
-            if(piece instanceof Rooks || piece instanceof Bishops) {
-                long temp = piece.getBitboard();
-                for (int i = 0; i < 64; i++) {
-                    long movePosition = 1L << i;
-                    if ((temp & movePosition) != 0) {
-                        long possibleMoves = piece.possibleMoves(movePosition);
-                        if ((possibleMoves & rookPosition) != 0) {
-                            return true;
-                        }
-                    }
+    public boolean isRookThreatened(boolean isWhite, long rookPosition) {
+        ArrayList<ArrayList<Piece>> opponentPieces = isWhite ? blackPieces : whitePieces;
+        for (ArrayList<Piece> pieceList : opponentPieces) {
+            for (Piece piece : pieceList) {
+                if ((piece.possibleMoves(piece.getBitboard()) & rookPosition) != 0) {
+                    return true;
                 }
-            }
-            else if ((piece.possibleMoves(piece.getBitboard()) & rookPosition) != 0) {
-                return true;
             }
         }
         return false;
     }
-    private boolean updateTurn(int oldRow, int oldCol, int newRow, int newCol) {
-        ArrayList<Piece> opponentPieces = isWhiteTurn ? blackPieces : whitePieces;
+
+    public boolean updateTurn(int oldRow, int oldCol, int newRow, int newCol) {
+        ArrayList<ArrayList<Piece>> opponentPieces = isWhiteTurn ? blackPieces : whitePieces;
         long oldPosition = indexToBitboard(oldRow, oldCol);
         long newPosition = indexToBitboard(newRow, newCol);
 
         // Update the piece's position
         selectedPiece.setBitboard((selectedPiece.getBitboard() & ~oldPosition) | newPosition);
-        if((enPassantPosition & newPosition) != 0 && (selectedPiece instanceof WhitePawns || selectedPiece instanceof BlackPawns)) {
-            if(isWhiteTurn) {
+        if ((enPassantPosition & newPosition) != 0 && (selectedPiece instanceof WhitePawn || selectedPiece instanceof BlackPawn)) {
+            if (isWhiteTurn) {
                 enPassantPosition = indexToBitboard(newRow + 1, newCol);
-                blackPieces.get(0).setBitboard(blackPieces.get(0).getBitboard() & ~enPassantPosition);
+                for (Piece pawn : blackPieces.get(0)) { // Iterate through black pawns
+                    if ((pawn.getBitboard() & enPassantPosition) != 0) {
+                        pawn.setBitboard(pawn.getBitboard() & ~enPassantPosition);
+                        break;
+                    }
+                }
                 Piece.blackPieces &= ~enPassantPosition;
                 Piece.allPieces &= ~enPassantPosition;
-            }
-            else {
+            } else {
                 enPassantPosition = indexToBitboard(newRow - 1, newCol);
-                whitePieces.get(0).setBitboard(whitePieces.get(0).getBitboard() & ~enPassantPosition);
+                for (Piece pawn : whitePieces.get(0)) { // Iterate through white pawns
+                    if ((pawn.getBitboard() & enPassantPosition) != 0) {
+                        pawn.setBitboard(pawn.getBitboard() & ~enPassantPosition);
+                        break;
+                    }
+                }
                 Piece.whitePieces &= ~enPassantPosition;
                 Piece.allPieces &= ~enPassantPosition;
             }
@@ -202,26 +284,38 @@ public class Model {
         lastMove[3] = newCol;
 
         // Update the state of the king and rooks if necessary
-        King king = (King) (isWhiteTurn ? whitePieces.get(5) : blackPieces.get(5));
-        Rooks rooks = (Rooks) (isWhiteTurn ? whitePieces.get(3) : blackPieces.get(3));
+        ArrayList<Piece> kingList = isWhiteTurn ? whitePieces.get(5) : blackPieces.get(5);
+        ArrayList<Piece> rookList = isWhiteTurn ? whitePieces.get(3) : blackPieces.get(3);
+        King king = (King) kingList.get(0); // Assuming there is only one king in the list
+        Rook rook = null;
+        // Find the specific rook being moved
+        for (Piece piece : rookList) {
+            if (piece instanceof Rook && piece.getBitboard() == selectedPiece.getBitboard()) {
+                rook = (Rook) piece;
+                break;
+            }
+        }
         if (selectedPiece instanceof King && !king.getHasMoved()) {
             king.setHasMoved(true);
-        } else if (selectedPiece instanceof Rooks && !king.getHasMoved() && (!rooks.getHasMovedLeft() || !rooks.getHasMovedRight())) {
-            long kingPosition = findKingPosition(!selectedPiece.isWhite());
+        } else if (selectedPiece instanceof Rook && !king.getHasMoved() && (!rook.getHasMovedLeft() || !rook.getHasMovedRight())) {
+            long kingPosition = findKingPosition(selectedPiece.isWhite());
             boolean isLeftRook = selectedPiece.isWhite() ? kingPosition > oldPosition : kingPosition < oldPosition;
-            if (isLeftRook) rooks.setHasMovedLeft(true);
-            else rooks.setHasMovedRight(true);
+            if (isLeftRook) rook.setHasMovedLeft(true);
+            else rook.setHasMovedRight(true);
         }
         // Remove the captured opponent piece if any
-        for (Piece opponentPiece : opponentPieces) {
-            if ((opponentPiece.getBitboard() & newPosition) != 0) {
-                opponentPiece.setBitboard(opponentPiece.getBitboard() & ~newPosition);
-                if (isWhiteTurn) {
-                    Piece.blackPieces &= ~newPosition;
-                } else {
-                    Piece.whitePieces &= ~newPosition;
+        for (ArrayList<Piece> pieceList : opponentPieces) {
+            for (Iterator<Piece> iterator = pieceList.iterator(); iterator.hasNext(); ) {
+                Piece opponentPiece = iterator.next();
+                if ((opponentPiece.getBitboard() & newPosition) != 0) {
+                    iterator.remove(); // Safely remove the piece
+                    if (isWhiteTurn) {
+                        Piece.blackPieces &= ~newPosition;
+                    } else {
+                        Piece.whitePieces &= ~newPosition;
+                    }
+                    break;
                 }
-                break;
             }
         }
 
@@ -232,7 +326,7 @@ public class Model {
         enPassantPosition = 0L;
 
         // Check if the move puts the opponent's king in check
-        if (isKingInCheck(!isWhiteTurn)) {
+        if (isKingInCheck(isWhiteTurn)) {
             System.out.println((isWhiteTurn ? "Black" : "White") + " king is in check!");
             Piece.check = true;
 
@@ -242,28 +336,36 @@ public class Model {
         }
         return true;
     }
+
+
     public long getPossibleMoves(long specificPiece) {
         long moves = 0L;
         //Update the selected piece
         if (isWhiteTurn) {
-            for (Piece piece : whitePieces) {
-                if ((piece.getBitboard() & specificPiece) != 0) {
-                    selectedPiece = piece;
-                    moves = piece.possibleMoves(specificPiece);
+            for (ArrayList<Piece> pieceList : whitePieces) {
+                for (Piece piece : pieceList) {
+                    if ((piece.getBitboard() & specificPiece) != 0) {
+                        selectedPiece = piece;
+                        moves = piece.possibleMoves(specificPiece);
+                        break;
+                    }
                 }
             }
         } else {
-            for (Piece piece : blackPieces) {
-                if ((piece.getBitboard() & specificPiece) != 0) {
-                    selectedPiece = piece;
-                    moves = piece.possibleMoves(specificPiece);
+            for (ArrayList<Piece> pieceList : blackPieces) {
+                for (Piece piece : pieceList) {
+                    if ((piece.getBitboard() & specificPiece) != 0) {
+                        selectedPiece = piece;
+                        moves = piece.possibleMoves(specificPiece);
+                        break;
+                    }
                 }
             }
         }
 
         // Handle en passant capture
-        if (selectedPiece instanceof BlackPawns && lastMovedPiece instanceof WhitePawns ||
-                selectedPiece instanceof WhitePawns && lastMovedPiece instanceof BlackPawns) {
+        if (selectedPiece instanceof BlackPawn && lastMovedPiece instanceof WhitePawn ||
+                selectedPiece instanceof WhitePawn && lastMovedPiece instanceof BlackPawn) {
             int oldRow = lastMove[0];
             int oldCol = lastMove[1];
             int newRow = lastMove[2];
@@ -273,9 +375,9 @@ public class Model {
                 int enPassantCol = newCol;
                 long enPassantPosition = indexToBitboard(enPassantRow, enPassantCol);
                 int currentPawnRow = isWhiteTurn ? 3 : 4;
-                int currentPawnCol = (int) (Math.log(selectedPiece.getBitboard() & specificPiece) / Math.log(2)) % 8;
-                if ((selectedPiece.getBitboard() & specificPiece) == indexToBitboard(currentPawnRow, currentPawnCol) &&
-                        (currentPawnCol == enPassantCol - 1 || currentPawnCol == enPassantCol + 1)) {
+                int currentPawnCol = (int) (Math.log(selectedPiece.getBitboard()) / Math.log(2)) % 8;
+                if (selectedPiece.getBitboard() == indexToBitboard(currentPawnRow, currentPawnCol) &&
+                        ((currentPawnCol == enPassantCol - 1) || (currentPawnCol == enPassantCol + 1))) {
                     moves |= enPassantPosition;
                 }
             }
@@ -300,7 +402,7 @@ public class Model {
                 } else {
                     Piece.blackPieces = (Piece.blackPieces & ~specificPiece) | movePosition;
                 }
-                if (isKingInCheck(!selectedPiece.isWhite())) {
+                if (isKingInCheck(selectedPiece.isWhite())) {
                     moves &= ~movePosition;
                 }
                 selectedPiece.setBitboard(originalPosition);
@@ -317,33 +419,20 @@ public class Model {
     }
 
     public long findKingPosition(boolean isWhite) {
-        ArrayList<Piece> pieces = isWhite ? blackPieces : whitePieces;
-        for (Piece piece : pieces) {
-            if (piece instanceof King) {
-                return piece.getBitboard();
-            }
-        }
-        return 0L;
+        ArrayList<ArrayList<Piece>> pieces = isWhite ? whitePieces : blackPieces;
+        ArrayList<Piece> kingList = pieces.get(5);
+        King king = (King)kingList.get(0);
+        return king.getBitboard();
     }
 
     public boolean isKingInCheck(boolean isWhite) {
         long kingPosition = findKingPosition(isWhite);
-        ArrayList<Piece> opponentPieces = isWhite ? whitePieces : blackPieces;
-        for (Piece piece : opponentPieces) {
-            if(piece instanceof Rooks || piece instanceof Bishops) {
-                long temp = piece.getBitboard();
-                for (int i = 0; i < 64; i++) {
-                    long movePosition = 1L << i;
-                    if ((temp & movePosition) != 0) {
-                        long possibleMoves = piece.possibleMoves(movePosition);
-                        if ((possibleMoves & kingPosition) != 0) {
-                            return true;
-                        }
-                    }
+        ArrayList<ArrayList<Piece>> opponentPieces = isWhite ? blackPieces : whitePieces;
+        for (ArrayList<Piece> pieceList : opponentPieces) {
+            for (Piece piece : pieceList) {
+                if ((piece.possibleMoves(piece.getBitboard()) & kingPosition) != 0) {
+                    return true;
                 }
-            }
-            else if ((piece.possibleMoves(piece.getBitboard()) & kingPosition) != 0) {
-                return true;
             }
         }
         return false;
@@ -357,12 +446,15 @@ public class Model {
 
         // Save the state of the opponent piece that might be captured
         Piece capturedPiece = null;
-        ArrayList<Piece> opponentPieces = piece.isWhite() ? blackPieces : whitePieces;
-        for (Piece opponentPiece : opponentPieces) {
-            if ((opponentPiece.getBitboard() & movePosition) != 0) {
-                capturedPiece = opponentPiece;
-                break;
+        ArrayList<ArrayList<Piece>> opponentPieces = piece.isWhite() ? blackPieces : whitePieces;
+        for (ArrayList<Piece> pieceList : opponentPieces) {
+            for (Piece opponentPiece : pieceList) {
+                if ((opponentPiece.getBitboard()) != 0) {
+                    capturedPiece = opponentPiece;
+                    break;
+                }
             }
+            if (capturedPiece != null) break;
         }
 
         // Make the move
@@ -382,7 +474,7 @@ public class Model {
             }
         }
 
-        boolean isInCheck = isKingInCheck(!piece.isWhite());
+        boolean isInCheck = isKingInCheck(piece.isWhite());
 
         // Revert the move
         piece.setBitboard(originalPosition);
@@ -417,24 +509,18 @@ public class Model {
     }
 
     public boolean isCheckmate(boolean isWhite) {
-        ArrayList<Piece> pieces = isWhite ? whitePieces : blackPieces;
+        ArrayList<ArrayList<Piece>> pieces = isWhite ? whitePieces : blackPieces;
         long validMoves = 0L;
-        for (Piece piece : pieces) {
-            long temp = piece.getBitboard();
-            for(int i = 0; i < 64; i++) {
-                long movePosition = 1L << i;
-                if((temp & movePosition) != 0) {
-                    long possibleMoves = piece.possibleMoves(movePosition);
-                    validMoves = filterMovesThatResolveCheck(piece, possibleMoves, movePosition);
-                    if (possibleMoves != 0) {
-                        return false;
-                    }
+
+        for (ArrayList<Piece> pieceList : pieces) {
+            for (Piece piece : pieceList) {
+                long possibleMoves = piece.possibleMoves(piece.getBitboard());
+                validMoves = filterMovesThatResolveCheck(piece, possibleMoves, piece.getBitboard());
+                if (validMoves != 0) {
+                    return false;
                 }
             }
-
         }
-        if(validMoves != 0)
-            return false;
         return true;
     }
 
@@ -442,12 +528,20 @@ public class Model {
     public Model getCopy() {
         Model copy = new Model(frc);
         copy.whitePieces = new ArrayList<>();
-        for (Piece piece : whitePieces) {
-            copy.whitePieces.add(piece.clone());
+        for (ArrayList<Piece> pieceList : whitePieces) {
+            ArrayList<Piece> clonedList = new ArrayList<>();
+            for (Piece piece : pieceList) {
+                clonedList.add(piece.clone());
+            }
+            copy.whitePieces.add(clonedList);
         }
         copy.blackPieces = new ArrayList<>();
-        for (Piece piece : blackPieces) {
-            copy.blackPieces.add(piece.clone());
+        for (ArrayList<Piece> pieceList : blackPieces) {
+            ArrayList<Piece> clonedList = new ArrayList<>();
+            for (Piece piece : pieceList) {
+                clonedList.add(piece.clone());
+            }
+            copy.blackPieces.add(clonedList);
         }
         copy.possibleMoves = possibleMoves;
         copy.selectedPiece = selectedPiece != null ? selectedPiece.clone() : null;
@@ -459,4 +553,41 @@ public class Model {
         return copy;
     }
 
+    public ArrayList<ArrayList<Piece>> getWhitePieces() {
+        return whitePieces;
+    }
+
+    public ArrayList<ArrayList<Piece>> getBlackPieces() {
+        return blackPieces;
+    }
+
+    public long getPossibleMoves() {
+        return possibleMoves;
+    }
+
+    public Piece getSelectedPiece() {
+        return selectedPiece;
+    }
+
+    public boolean isWhiteTurn() {
+        return isWhiteTurn;
+    }
+
+    public FischerRandomChess getFrc() {
+        return frc;
+    }
+
+    public Piece getLastMovedPiece() {
+        return lastMovedPiece;
+    }
+
+    public int[] getLastMove() {
+        return lastMove;
+    }
+
+    public long getEnPassantPosition() {
+        return enPassantPosition;
+    }
+
 }
+

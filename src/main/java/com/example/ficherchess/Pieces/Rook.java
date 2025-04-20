@@ -1,11 +1,11 @@
 package com.example.ficherchess.Pieces;
 
-public class Rooks extends Piece {
+public class Rook extends Piece {
     private boolean hasMovedRight = false;
     private boolean hasMovedLeft = false;
 
-    public Rooks(long bitboard, boolean isWhite) {
-        super(bitboard, isWhite);
+    public Rook(long bitboard, boolean isWhite) {
+        super(bitboard, isWhite, 5);
     }
 
     @Override
@@ -35,7 +35,7 @@ public class Rooks extends Piece {
     }
 
     @Override
-    public Bishops clone() {
-        return (Bishops) super.clone();
+    public Rook clone() {
+        return (Rook) super.clone();
     }
 }

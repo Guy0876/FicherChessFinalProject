@@ -1,8 +1,8 @@
 package com.example.ficherchess.Pieces;
 
-public class Knights extends Piece {
-    public Knights(long bitboard, boolean isWhite) {
-        super(bitboard , isWhite);
+public class Knight extends Piece {
+    public Knight(long bitboard, boolean isWhite) {
+        super(bitboard , isWhite, 3);
     }
 
     @Override
@@ -25,7 +25,7 @@ public class Knights extends Piece {
     }
 
     @Override
-    public Knights clone() {
-        return (Knights) super.clone();
+    public Knight clone() {
+        return (Knight) super.clone();
     }
 }
