@@ -449,7 +449,7 @@ public class Model {
         ArrayList<ArrayList<Piece>> opponentPieces = piece.isWhite() ? blackPieces : whitePieces;
         for (ArrayList<Piece> pieceList : opponentPieces) {
             for (Piece opponentPiece : pieceList) {
-                if ((opponentPiece.getBitboard()) != 0) {
+                if ((opponentPiece.getBitboard() & movePosition) != 0) {
                     capturedPiece = opponentPiece;
                     break;
                 }
@@ -590,6 +590,24 @@ public class Model {
     }
 
     public void replacePiece(Piece pawn, Piece promotedPiece) {
+    }
+    public Piece getPieceAt(int row, int col) {
+        long bitboard = indexToBitboard(row, col);
+        for (ArrayList<Piece> pieceList : whitePieces) {
+            for (Piece piece : pieceList) {
+                if ((piece.getBitboard() & bitboard) != 0) {
+                    return piece;
+                }
+            }
+        }
+        for (ArrayList<Piece> pieceList : blackPieces) {
+            for (Piece piece : pieceList) {
+                if ((piece.getBitboard() & bitboard) != 0) {
+                    return piece;
+                }
+            }
+        }
+        return null;
     }
 }
 

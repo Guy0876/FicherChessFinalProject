@@ -8,10 +8,13 @@ import java.util.ArrayList;
 public class AutomatedBot {
     private Model model;
     private Model copy;
-    boolean opening = true;
-    boolean middleGame = false;
-    boolean endGame = false;
-    int totalMoves = 0;
+    private boolean opening = true;
+    private boolean middleGame = false;
+    private boolean endGame = false;
+    private int totalMoves = 0;
+    private int [] lastMove;
+    private MoveSum [] moveSums;
+    private int depth = 0;
 //    private ArrayList<ArrayList<Piece>> pieces;
 //    private ArrayList<ArrayList<Piece>> opponentPieces;
     public AutomatedBot(Model model){
@@ -198,7 +201,61 @@ public class AutomatedBot {
         // if not everything make a useless move not putting anything in danger
 //    }
 
-    public void makeMove() {
+    public int [] makeBestMove() {
+        Model tempModel = model;
+        boolean tempopening = opening;
+        boolean tempmiddleGame = middleGame;
+        boolean tempendGame = endGame;
+        int temptotalMoves = totalMoves;
+        moveSums = new MoveSum[5];
+        for(int i = 0; i < 5; i++) {
+            this.model = tempModel.getCopy();
+            this.opening = tempopening;
+            this.middleGame = tempmiddleGame;
+            this.endGame = tempendGame;
+            this.totalMoves = temptotalMoves;
+            makeMove();
+            moveSums[i] = new MoveSum(lastMove, 0);
+            depth++;
+            makeMove();
+            makeMove();
+            ArrayList<ArrayList<Piece>> pieces = model.isWhiteTurn() ? model.getWhitePieces() : model.getBlackPieces();
+            ArrayList<ArrayList<Piece>> opponentPieces = model.isWhiteTurn() ? model.getBlackPieces() : model.getWhitePieces();
+            double score = evaluatePosition(pieces, model) -
+                    evaluatePosition(opponentPieces, model);
+            moveSums[i].setScore(score);
+            depth = 0;
+        }
+        int [] bestMove = moveSums[0].getMove();
+        double maxScore = moveSums[0].getScore();
+        for(int i = 1; i < 5; i++) {
+            if(moveSums[i].getScore() > maxScore) {
+                bestMove = moveSums[i].getMove();
+                maxScore = moveSums[i].getScore();
+            }
+        }
+        this.model = tempModel;
+        this.opening = tempopening;
+        this.middleGame = tempmiddleGame;
+        this.endGame = tempendGame;
+        this.totalMoves = temptotalMoves;
+        if(maxScore < -10){
+            makeSafeBestMove();
+        }
+        else {
+            model.setSelectedPiece(bestMove[0], bestMove[1]);
+            model.updateTurn(bestMove[0], bestMove[1], bestMove[2], bestMove[3]);
+            lastMove = new int[]{bestMove[0], bestMove[1], bestMove[2], bestMove[3]};
+        }
+        totalMoves++;
+        if(totalMoves == 12) {
+            opening = false;
+            middleGame = true;
+        }
+        return lastMove;
+    }
+
+    private void makeMove() {
         if (Piece.check) {
             handleCheckSituation();
         } else if (!attemptCheckmate()) {
@@ -233,7 +290,6 @@ public class AutomatedBot {
                 } else if (endGame){
                     makeAnEndGameMove(pieces, score);
                 }
-                makeSafeBestMove();
             }
         }
         totalMoves++;
@@ -241,6 +297,18 @@ public class AutomatedBot {
             opening = false;
             middleGame = true;
         }
+    }
+    private boolean chechIfMoveHasBeenMade(int [] move) {
+        for (int i = 0; i < moveSums.length; i++) {
+            if(moveSums[i] == null) {
+                continue;
+            }
+            if(moveSums[i].getMove()[0] == move[0] && moveSums[i].getMove()[1] == move[1] &&
+                    moveSums[i].getMove()[2] == move[2] && moveSums[i].getMove()[3] == move[3]) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void makeSafeBestMove() {
@@ -256,10 +324,11 @@ public class AutomatedBot {
                     for(int i = 0; i < 64; i++) {
                         long move = 1L << i;
                         if ((moves & move) != 0) {
-                            double pos = simulateMoveAndEvaluate(piece, move);
-                            if (pos > maxPos) {
+                            double pos = simulateMoveAndEvaluate(piece, move, false);
+                            int [] movePosition = movePositionToRowCol(move);
+                            if (pos > maxPos && !(chechIfMoveHasBeenMade(new int[]{pieceRowCol[0], pieceRowCol[1], movePosition[0], movePosition[1]}) || depth > 0)) {
                                 maxPos = pos;
-                                maxRowCol = movePositionToRowCol(move);
+                                maxRowCol = movePosition;
                                 model.setSelectedPiece(pieceRowCol[0], pieceRowCol[1]);
                             }
                         }
@@ -267,6 +336,7 @@ public class AutomatedBot {
                 }
             }
         }
+        lastMove = new int[]{pieceRowCol[0], pieceRowCol[1], maxRowCol[0], maxRowCol[1]};
         model.updateTurn(pieceRowCol[0], pieceRowCol[1], maxRowCol[0], maxRowCol[1]);
     }
 
@@ -281,8 +351,8 @@ public class AutomatedBot {
         // Step 1: Identify passed pawns
         Piece passedPawn = findPassedPawn(pieces);
         if (passedPawn != null) {
-            promotePawn(passedPawn);
-            return;
+            if(promotePawn(passedPawn))
+                return;
         }
 
         // Step 2: Create a passed pawn
@@ -357,25 +427,29 @@ public class AutomatedBot {
         return (ranksAhead & opponentPawns) == 0;
     }
 
-    private void promotePawn(Piece pawn) {
+    private boolean promotePawn(Piece pawn) {
         long pawnPosition = pawn.getBitboard();
         int[] pawnRowCol = movePositionToRowCol(pawnPosition);
 
         // Determine the direction of movement based on the pawn's color
         int direction = pawn.isWhite() ? -1 : 1;
 
+        int promotionRow = pawn.isWhite() ? 0 : 7; // Promotion row for white is rank 0, for black is rank 7
         // Move the pawn step by step toward the promotion row
-        int promotionRow = pawn.isWhite() ? 0 : 7;
-        while (pawnRowCol[0] != promotionRow) {
-            int[] nextRowCol = {pawnRowCol[0] + direction, pawnRowCol[1]};
+        int[] nextRowCol = {pawnRowCol[0] + direction, pawnRowCol[1]};
+        if(!chechIfMoveHasBeenMade(new int[]{pawnRowCol[0], pawnRowCol[1], nextRowCol[0], nextRowCol[1]}) || depth > 0) {
             model.setSelectedPiece(pawnRowCol[0], pawnRowCol[1]);
-            model.updateTurn(pawnRowCol[0], pawnRowCol[1], nextRowCol[0], nextRowCol[1]);
+            lastMove = new int[]{pawnRowCol[0], pawnRowCol[1], pawnRowCol[0] + direction, pawnRowCol[1]};
+            model.updateTurn(pawnRowCol[0], pawnRowCol[1], pawnRowCol[0] + direction, pawnRowCol[1]);
             pawnRowCol = nextRowCol;
+            if(pawnRowCol[0] == promotionRow) {
+                // Replace the pawn with a Queen (or another piece)
+                Piece promotedPiece = new Queen(1L << (promotionRow * 8 + pawnRowCol[1]), pawn.isWhite());
+                model.replacePiece(pawn, promotedPiece);
+            }
+            return true;
         }
-
-        // Replace the pawn with a Queen (or another piece)
-        Piece promotedPiece = new Queen(1L << (promotionRow * 8 + pawnRowCol[1]), pawn.isWhite());
-        model.replacePiece(pawn, promotedPiece);
+        return false;
     }
 
     private boolean makeBestMoveInvolvingKing(ArrayList<ArrayList<Piece>> pieces) {
@@ -393,6 +467,8 @@ public class AutomatedBot {
                     long move = 1L << i;
                     if ((moves & move) != 0) {
                         int[] moveRowCol = movePositionToRowCol(move);
+                        if(chechIfMoveHasBeenMade(new int[]{pieceRowCol[0], pieceRowCol[1], moveRowCol[0], moveRowCol[1]}) && depth == 0) {continue;}
+                        // Calculate the distance to the nearest weak opponent pawn
                         double minDistanceToWeakPawn = Double.MAX_VALUE;
 
                         // Calculate the minimum distance to any weak opponent pawn
@@ -402,7 +478,7 @@ public class AutomatedBot {
                             minDistanceToWeakPawn = Math.min(minDistanceToWeakPawn, distance);
                         }
 
-                        double positionScore = simulateMoveAndEvaluate(piece, move);
+                        double positionScore = simulateMoveAndEvaluate(piece, move, false);
 
                         // Combine position score and proximity to the weak pawns
                         double combinedScore = positionScore - minDistanceToWeakPawn;
@@ -418,6 +494,7 @@ public class AutomatedBot {
 
         if (bestMoveStart[0] != -1 && bestMoveEnd[0] != -1) {
             model.setSelectedPiece(bestMoveStart[0], bestMoveStart[1]);
+            lastMove = new int[]{bestMoveStart[0], bestMoveStart[1], bestMoveEnd[0], bestMoveEnd[1]};
             model.updateTurn(bestMoveStart[0], bestMoveStart[1], bestMoveEnd[0], bestMoveEnd[1]);
             return true;
         }
@@ -477,7 +554,7 @@ public class AutomatedBot {
         ArrayList<ArrayList<Piece>> opponentPieces = model.isWhiteTurn() ? model.getBlackPieces() : model.getWhitePieces();
         for (ArrayList<Piece> pieceList : opponentPieces) {
             for (Piece piece : pieceList) {
-                if(evaluateThreat(piece, opponentPieces).getEvaluation() < 0) {
+                if(evaluateThreat(piece, opponentPieces, model).getEvaluation() < 0) {
                     weakPieces.add(piece);
                 }
             }
@@ -500,21 +577,25 @@ public class AutomatedBot {
                         for (int i = 0; i < 64; i++) {
                             long move = 1L << i;
                             if ((moves & move) != 0) {
-                                double s = simulateMoveAndEvaluate(p, move);
+                                double s = simulateMoveAndEvaluate(p, move, false);
+                                int [] movePosition = movePositionToRowCol(move), position = movePositionToRowCol(p.getBitboard());
+                                if(chechIfMoveHasBeenMade(new int[]{position[0], position[1], movePosition[0], movePosition[1]}) && depth == 0) {continue;}
                                 if (s > maxPos) {
                                     maxPos = s;
-                                    max = movePositionToRowCol(move);
-                                    poStart = movePositionToRowCol(p.getBitboard());
+                                    max = movePosition;
+                                    poStart = position;
                                 }
                             }
                         }
                     }
                     else {
-                        double s = simulateMoveAndEvaluate(p, moves);
+                        double s = simulateMoveAndEvaluate(p, moves, false);
+                        int [] movePosition = movePositionToRowCol(moves), position = movePositionToRowCol(p.getBitboard());
+                        if(chechIfMoveHasBeenMade(new int[]{position[0], position[1], movePosition[0], movePosition[1]}) && depth == 0) {continue;}
                         if (s > maxPos) {
                             maxPos = s;
-                            max = movePositionToRowCol(moves);
-                            poStart = movePositionToRowCol(p.getBitboard());
+                            max = movePosition;
+                            poStart = position;
                         }
                     }
                 }
@@ -522,6 +603,7 @@ public class AutomatedBot {
         }
         if(max[0] != -1 && max[1] != -1 && maxPos > score) {
             model.setSelectedPiece(poStart[0], poStart[1]);
+            lastMove = new int[]{poStart[0], poStart[1], max[0], max[1]};
             model.updateTurn(poStart[0], poStart[1], max[0], max[1]);
             return true;
         }
@@ -555,10 +637,20 @@ public class AutomatedBot {
         if(evaluation > 2) {
             ArrayList<Piece> rooks = pieces.get(3);
             for(Piece r : rooks) {
-                double s = simulateMoveAndEvaluate(king, r.getBitboard());
+                double s = simulateMoveAndEvaluate(king, r.getBitboard(), true);
+                int [] movePosition = movePositionToRowCol(r.getBitboard());
+                if(chechIfMoveHasBeenMade(new int[]{poStart[0], poStart[1], movePosition[0], movePosition[1]}) && depth == 0) {continue;}
                 if(s > maxPos) {
                     maxPos = s;
-                    max = movePositionToRowCol(r.getBitboard());
+                    max = movePosition;
+                }
+            }
+            if(score != Double.MIN_VALUE) {
+                if(max[0] != -1 && max[1] != -1 && maxPos > score) {
+                    model.setSelectedPiece(poStart[0], poStart[1]);
+                    lastMove = new int[]{poStart[0], poStart[1], max[0], max[1]};
+                    model.updateTurn(poStart[0], poStart[1], max[0], max[1]);
+                    return;
                 }
             }
         }
@@ -578,12 +670,14 @@ public class AutomatedBot {
                 for(int i = 0; i < 64; i++) {
                     long move = 1L << i;
                     if ((moves & move) != 0) {
-                        simulateMoveAndEvaluate(p, move);
+                        simulateMoveAndEvaluateNoRevert(p, move, false);
                         long attacks = getAvailableMoves(move, copy);
                         if((attacks & piece.getBitboard()) != 0) {
                             int[] selectedRowCol = movePositionToRowCol(piece.getBitboard());
-                            model.setSelectedPiece(selectedRowCol[0], selectedRowCol[1]);
                             int[] moveRowCol = movePositionToRowCol(move);
+                            if(chechIfMoveHasBeenMade(new int[]{selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]}) && depth == 0) {continue;}
+                            model.setSelectedPiece(selectedRowCol[0], selectedRowCol[1]);
+                            lastMove = new int[]{selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]};
                             model.updateTurn(selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]);
                             return true;
                         }
@@ -604,24 +698,28 @@ public class AutomatedBot {
                         for(int i = 0; i < 64; i++) {
                             long move = 1L << i;
                             if ((moves & move) != 0) {
-                                double pos = simulateMoveAndEvaluate(p, move);
+                                int [] movePosition = movePositionToRowCol(move), position = movePositionToRowCol(p.getBitboard());
+                                if(chechIfMoveHasBeenMade(new int[]{position[0], position[1], movePosition[0], movePosition[1]}) && depth == 0) {continue;}
+                                double pos = simulateMoveAndEvaluate(p, move, false);
                                 if( pos > maxPos) {
                                     maxPos = pos;
-                                    max = movePositionToRowCol(move);
-                                    poStart = movePositionToRowCol(p.getBitboard());
+                                    max = movePosition;
+                                    poStart = position;
                                 }
                             }
                         }
-                 } else if ((p instanceof WhitePawn || p instanceof BlackPawn) && (p.getBitboard() & (0x3C00L | 0x003C0000000000000L)) != 0) {
+                 } else if ((p instanceof WhitePawn || p instanceof BlackPawn) && (p.getBitboard() & (0x3C00L | 0x003C000000000000L)) != 0) {
                         long moves = getAvailableMoves(p.getBitboard(), model);
                         for(int i = 0; i < 64; i++) {
                             long move = 1L << i;
                             if ((moves & move) != 0) {
-                                double pos = simulateMoveAndEvaluate(p, move) + 0.5;
+                                int [] movePosition = movePositionToRowCol(move), position = movePositionToRowCol(p.getBitboard());
+                                if((chechIfMoveHasBeenMade(new int[]{position[0], position[1], movePosition[0], movePosition[1]})) && depth == 0) {continue;}
+                                double pos = simulateMoveAndEvaluate(p, move, false) + 0.5;
                                 if( pos > maxPos) {
                                     maxPos = pos;
-                                    max = movePositionToRowCol(move);
-                                    poStart = movePositionToRowCol(p.getBitboard());
+                                    max = movePosition;
+                                    poStart = position;
                                 }
                             }
                         }
@@ -630,11 +728,13 @@ public class AutomatedBot {
                         for(int i = 0; i < 64; i++) {
                             long move = 1L << i;
                             if ((moves & move) != 0) {
-                                double pos = simulateMoveAndEvaluate(p, move);
+                                int [] movePosition = movePositionToRowCol(move), position = movePositionToRowCol(p.getBitboard());
+                                if(chechIfMoveHasBeenMade(new int[]{position[0], position[1], movePosition[0], movePosition[1]}) && depth == 0) {continue;}
+                                double pos = simulateMoveAndEvaluate(p, move, false);
                                 if( pos > maxPos) {
                                     maxPos = pos;
-                                    max = movePositionToRowCol(move);
-                                    poStart = movePositionToRowCol(p.getBitboard());
+                                    max = movePosition;
+                                    poStart = position;
                                 }
                             }
                         }
@@ -642,6 +742,7 @@ public class AutomatedBot {
             }
         }
         model.setSelectedPiece(poStart[0], poStart[1]);
+        lastMove = new int[]{poStart[0], poStart[1], max[0], max[1]};
         model.updateTurn(poStart[0], poStart[1], max[0], max[1]);
     }
 
@@ -649,31 +750,36 @@ public class AutomatedBot {
         ArrayList<ArrayList<Piece>> pieces = model.isWhiteTurn() ? model.getWhitePieces() : model.getBlackPieces();
         double maxPos = Double.MIN_VALUE;
         int [] maxRowCol = {-1, -1};
-        int [] pieceRowCol = {-1, -1};
+        int [] pieceRowCol = movePositionToRowCol(p.getBitboard());
         long moves = getAvailableMoves(p.getBitboard(), model);
-        pieceRowCol = movePositionToRowCol(p.getBitboard());
         model.setSelectedPiece(pieceRowCol[0], pieceRowCol[1]);
         for(int i = 0; i < 64; i++) {
             long move = 1L << i;
             if ((moves & move) != 0) {
-                double pos = simulateMoveAndEvaluate(p, move);
+                int [] movePosition = movePositionToRowCol(move);
+                if(chechIfMoveHasBeenMade(new int[]{pieceRowCol[0], pieceRowCol[1], movePosition[0], movePosition[1]}) && depth == 0) {continue;}
+                double pos = simulateMoveAndEvaluate(p, move, false);
                 if (pos > maxPos) {
                     maxPos = pos;
-                    maxRowCol = movePositionToRowCol(move);
+                    maxRowCol = movePosition;
                 }
             }
         }
+        lastMove = new int[]{pieceRowCol[0], pieceRowCol[1], maxRowCol[0], maxRowCol[1]};
         model.updateTurn(pieceRowCol[0], pieceRowCol[1], maxRowCol[0], maxRowCol[1]);
     }
 
     private void defendBestWayPossible(Piece piece, ArrayList<ArrayList<Piece>> pieces) {
         for (ArrayList<Piece> pieceList : pieces) {
             for (Piece p : pieceList) {
+                if(p.getBitboard() == piece.getBitboard()) {
+                    continue;
+                }
                 long moves = getAvailableMoves(p.getBitboard(), model);
                 for(int i = 0; i < 64; i++) {
                     long move = 1L << i;
                     if ((moves & move) != 0) {
-                        simulateMoveAndEvaluate(p, move);
+                        simulateMoveAndEvaluateNoRevert(p, move, false);
                         long opponentPiecesBitBoard = model.isWhiteTurn() ? Piece.blackPieces : Piece.whitePieces;
                         if(model.isWhiteTurn()) {
                             Piece.blackPieces = Piece.whitePieces;
@@ -690,8 +796,10 @@ public class AutomatedBot {
                                 Piece.whitePieces = opponentPiecesBitBoard;
                             }
                             int[] selectedRowCol = movePositionToRowCol(piece.getBitboard());
-                            model.setSelectedPiece(selectedRowCol[0], selectedRowCol[1]);
                             int[] moveRowCol = movePositionToRowCol(move);
+                            if(chechIfMoveHasBeenMade(new int[]{selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]}) && depth == 0) {continue;}
+                            model.setSelectedPiece(selectedRowCol[0], selectedRowCol[1]);
+                            lastMove = new int[]{selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]};
                             model.updateTurn(selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]);
                         } else {
                             if (model.isWhiteTurn()) {
@@ -718,8 +826,10 @@ public class AutomatedBot {
                         long move = 1L << i;
                         if((move & piece.getBitboard()) != 0) {
                             int[] selectedRowCol = movePositionToRowCol(piece.getBitboard());
-                            model.setSelectedPiece(selectedRowCol[0], selectedRowCol[1]);
                             int[] moveRowCol = movePositionToRowCol(move);
+                            if(chechIfMoveHasBeenMade(new int[]{selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]}) && depth == 0) {continue;}
+                            model.setSelectedPiece(selectedRowCol[0], selectedRowCol[1]);
+                            lastMove = new int[]{selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]};
                             model.updateTurn(selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]);
                             return true;
                         }
@@ -734,7 +844,7 @@ public class AutomatedBot {
         PieceInfo mostThreatenedPiece = new PieceInfo(null, "", Double.MIN_VALUE);
         for (ArrayList<Piece> pieceList : pieces) {
             for (Piece piece : pieceList) {
-                PieceInfo threatInfo = evaluateThreat(piece, pieces);
+                PieceInfo threatInfo = evaluateThreat(piece, pieces, model);
                 if(threatInfo.getAction().equals(mostThreatenedPiece.getAction())){
                     if(threatInfo.getEvaluation() > mostThreatenedPiece.getEvaluation()) {
                         mostThreatenedPiece = threatInfo;
@@ -749,7 +859,7 @@ public class AutomatedBot {
         return mostThreatenedPiece;
     }
 
-    private PieceInfo evaluateThreat(Piece p, ArrayList<ArrayList<Piece>> pieces) {
+    private PieceInfo evaluateThreat(Piece p, ArrayList<ArrayList<Piece>> pieces, Model model) {
         PieceInfo pInfo = new PieceInfo(p, "", 0);
         ArrayList<ArrayList<Piece>> opponentPieces = pieces.get(0).get(0).isWhite() ? model.getBlackPieces() : model.getWhitePieces();
         ArrayList<Piece> attackers = new ArrayList<Piece>();
@@ -764,10 +874,10 @@ public class AutomatedBot {
         ArrayList<Piece> defenders = new ArrayList<Piece>();
         long opponentPiecesBitBoard = model.isWhiteTurn() ? Piece.blackPieces : Piece.whitePieces;
         if(model.isWhiteTurn()) {
-            Piece.blackPieces = Piece.whitePieces;
+            Piece.blackPieces |= Piece.whitePieces;
         }
         else {
-            Piece.whitePieces = Piece.blackPieces;
+            Piece.whitePieces |= Piece.blackPieces;
         }
         for (ArrayList<Piece> pieceList : pieces) {
             for (Piece piece : pieceList) {
@@ -836,10 +946,12 @@ public class AutomatedBot {
                     for(int i = 0; i < 64; i++) {
                         long move = 1L << i;
                         if ((moves & move) != 0) {
-                            double pos = simulateMoveAndEvaluate(piece, move);
+                            int [] movePosition = movePositionToRowCol(move);
+                            if(chechIfMoveHasBeenMade(new int[]{pieceRowCol[0], pieceRowCol[1], movePosition[0], movePosition[1]}) && depth == 0) {continue;}
+                            double pos = simulateMoveAndEvaluate(piece, move, false);
                             if (pos > maxPos) {
                                 maxPos = pos;
-                                maxRowCol = movePositionToRowCol(move);
+                                maxRowCol = movePosition;
                                 model.setSelectedPiece(pieceRowCol[0], pieceRowCol[1]);
                             }
                         }
@@ -847,6 +959,7 @@ public class AutomatedBot {
                 }
             }
         }
+        lastMove = new int[]{pieceRowCol[0], pieceRowCol[1], maxRowCol[0], maxRowCol[1]};
         model.updateTurn(pieceRowCol[0], pieceRowCol[1], maxRowCol[0], maxRowCol[1]);
     }
 
@@ -859,10 +972,12 @@ public class AutomatedBot {
                 for(int i = 0; i < 64; i++) {
                     long move = 1L << i;
                     if ((moves & move) != 0) {
-                        if (simulateMoveAndEvaluate(piece, move) == Double.MAX_VALUE) {
+                        if (simulateMoveAndEvaluate(piece, move, false) == Double.MAX_VALUE) {
                             int[] selectedRowCol = movePositionToRowCol(piece.getBitboard());
                             model.setSelectedPiece(selectedRowCol[0], selectedRowCol[1]);
                             int[] moveRowCol = movePositionToRowCol(move);
+                            if(chechIfMoveHasBeenMade(new int[]{selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]}) && depth == 0) {continue;}
+                            lastMove = new int[]{selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]};
                             model.updateTurn(selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]);
                             return true;
                         }
@@ -882,7 +997,7 @@ public class AutomatedBot {
                 for (int i = 0; i < 64; i++) {
                     long move = 1L << i;
                     if ((moves & move) != 0) {
-                        if(simulateMoveAndEvaluate(piece, move) == Double.MIN_VALUE){
+                        if(simulateMoveAndEvaluate(piece, move, false) == Double.MIN_VALUE){
                             if(!preventCheckMate(move)){
                                 if(!takeBestWayPossible(piece, (oppPieces == model.getWhitePieces()) ? model.getBlackPieces() : model.getWhitePieces())) {
                                     makeSafeBestMove();
@@ -906,12 +1021,14 @@ public class AutomatedBot {
                 for (int i = 0; i < 64; i++) {
                     long movePos = 1L << i;
                     if ((moves & movePos) != 0) {
-                        simulateMoveAndEvaluate(piece, movePos);
+                        simulateMoveAndEvaluate(piece, movePos, false);
                         long possibleMoves = getAvailableMoves(movePos, copy);
                         if((possibleMoves & move) != 0){
                             int [] selectedRowCol = movePositionToRowCol(piece.getBitboard());
                             model.setSelectedPiece(selectedRowCol[0], selectedRowCol[1]);
                             int [] moveRowCol = movePositionToRowCol(movePos);
+                            if(chechIfMoveHasBeenMade(new int[]{selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]}) && depth == 0) {continue;}
+                            lastMove = new int[]{selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]};
                             model.updateTurn(selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]);
                             return true;
                         }
@@ -934,7 +1051,7 @@ public class AutomatedBot {
         return copy.getPossibleMoves();
     }
 
-    private double simulateMoveAndEvaluate(Piece piece, long movePosition) {
+    private double simulateMoveAndEvaluate(Piece piece, long movePosition, boolean isCastle) {
         long allPieces = Piece.allPieces;
         long whitePieces = Piece.whitePieces;
         long blackPieces = Piece.blackPieces;
@@ -942,8 +1059,13 @@ public class AutomatedBot {
         this.copy = model.getCopy();
         int[] selectedRowCol = movePositionToRowCol(piece.getBitboard());
         copy.setSelectedPiece(selectedRowCol[0], selectedRowCol[1]);
+        piece = copy.getSelectedPiece();
         int[] moveRowCol = movePositionToRowCol(movePosition);
-        copy.updateTurn(selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]);
+        if(isCastle){
+            copy.isLegalMove(selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]);
+        }else {
+            copy.updateTurn(selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]);
+        }
         // Evaluate the position based on material, center control, and king safety
         // Queen = 9, rook = 5, knight = bishop = 3, pawn = 1,
         // + to the position of the piece from PiecePosition[x][row][col]
@@ -957,6 +1079,19 @@ public class AutomatedBot {
         Piece.blackPieces = blackPieces;
         Piece.check = check;
         return score;
+    }
+
+    private void simulateMoveAndEvaluateNoRevert(Piece piece, long movePosition, boolean isCastle) {
+        this.copy = model.getCopy();
+        int[] selectedRowCol = movePositionToRowCol(piece.getBitboard());
+        copy.setSelectedPiece(selectedRowCol[0], selectedRowCol[1]);
+        piece = copy.getSelectedPiece();
+        int[] moveRowCol = movePositionToRowCol(movePosition);
+        if(isCastle){
+            copy.isLegalMove(selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]);
+        }else {
+            copy.updateTurn(selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]);
+        }
     }
 
     private int piecePosIndex(Piece p){
@@ -985,7 +1120,7 @@ public class AutomatedBot {
         else {
             score += Finals.BlackPiecePosition[i][piecePos[0]][piecePos[1]];
         }
-        PieceInfo threatInfo = evaluateThreat(p, pieces);
+        PieceInfo threatInfo = evaluateThreat(p, pieces, copy);
         if(threatInfo.getAction().equals("defend")) {
             score += 0.2 * p.getWeight();
         }
@@ -1008,7 +1143,7 @@ public class AutomatedBot {
     private double evaluatePosition(ArrayList<ArrayList<Piece>> pieces, Model model) {
         double score = 0;
         if(model.isCheckmate(pieces.get(0).get(0).isWhite())){return Double.MIN_VALUE;}
-        else if (!model.isCheckmate(pieces.get(0).get(0).isWhite())){return Double.MAX_VALUE;}
+        else if (model.isCheckmate(!pieces.get(0).get(0).isWhite())){return Double.MAX_VALUE;}
         for (ArrayList<Piece> pieceList : pieces) {
             for (Piece p : pieceList) {
                 score += evaluatePiece(p, piecePosIndex(p), pieces);
@@ -1060,5 +1195,7 @@ public class AutomatedBot {
 
         return score;
     }
+
+
 }
 
