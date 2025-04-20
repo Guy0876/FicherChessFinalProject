@@ -589,5 +589,7 @@ public class Model {
         return enPassantPosition;
     }
 
+    public void replacePiece(Piece pawn, Piece promotedPiece) {
+    }
 }
 

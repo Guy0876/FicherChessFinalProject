@@ -271,7 +271,278 @@ public class AutomatedBot {
     }
 
     private void makeAnEndGameMove(ArrayList<ArrayList<Piece>> pieces, double score) {
+        if(score >= 8) {
+            // i need to implement more checkmating techniques
 
+        } else if (score >= 5) {
+            if(attacKing(pieces, score)) return;
+        }
+
+        // Step 1: Identify passed pawns
+        Piece passedPawn = findPassedPawn(pieces);
+        if (passedPawn != null) {
+            promotePawn(passedPawn);
+            return;
+        }
+
+        // Step 2: Create a passed pawn
+        ArrayList<ArrayList<Piece>> opponentPieces = model.isWhiteTurn() ? model.getBlackPieces() : model.getWhitePieces();
+        ArrayList<Piece> weakPawns = findWeakPawns(opponentPieces);
+        if (!weakPawns.isEmpty()) {
+            for (Piece weakPawn : weakPawns) {
+                if (attackBestWayPossible(weakPawn, pieces)) {
+                    return;
+                } else {
+                    if(makeBestMoveInvolvingKing(pieces)) {
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Step 3: Attack weak opponent pieces
+        ArrayList<Piece> weakPieces = getWeakOppPieces();
+        if(!weakPieces.isEmpty()) {
+            for (int i = weakPieces.size() - 1; i >= 0; i--) {
+                Piece p = weakPieces.get(i);
+                if (attackBestWayPossible(p, pieces)) return;
+            }
+        }
+
+        // If no move is found, make a safe best move
+        makeSafeBestMove();
+    }
+
+    private Piece findPassedPawn(ArrayList<ArrayList<Piece>> pieces) {
+        for (ArrayList<Piece> pieceList : pieces) {
+            for (Piece piece : pieceList) {
+                if (piece instanceof WhitePawn || piece instanceof BlackPawn) {
+                    if (isPassedPawn(piece, pieces)) {
+                        return piece;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean isPassedPawn(Piece p, ArrayList<ArrayList<Piece>> pieces) {
+        long pawnPosition = p.getBitboard();
+        boolean isWhite = p.isWhite();
+
+        // Masks for file boundaries
+        long notAFile = 0xFEFEFEFEFEFEFEFEL; // Exclude A-file
+        long notHFile = 0x7F7F7F7F7F7F7F7FL; // Exclude H-file
+
+        // Get opponent pawns
+        ArrayList<Piece> ownPawns = pieces.get(0);
+        long opponentPawns = 0L;
+        for (Piece pawn : ownPawns) {
+            opponentPawns |= pawn.getBitboard();
+        }
+
+        // Calculate the pawn's file and adjacent files
+        long pawnFile = pawnPosition;
+        long leftFile = (pawnPosition << 1) & notAFile;
+        long rightFile = (pawnPosition >> 1) & notHFile;
+
+        // Combine the pawn's file and adjacent files
+        long relevantFiles = pawnFile | leftFile | rightFile;
+
+        // Determine the ranks ahead of the pawn
+        long ranksAhead = isWhite ? (relevantFiles << 8) | (relevantFiles << 16) | (relevantFiles << 24) | (relevantFiles << 32) | (relevantFiles << 40)
+                : (relevantFiles >> 8) | (relevantFiles >> 16) | (relevantFiles >> 24) | (relevantFiles >> 32) | (relevantFiles >> 40);
+
+        // Check if there are any opponent pawns in the ranks ahead
+        return (ranksAhead & opponentPawns) == 0;
+    }
+
+    private void promotePawn(Piece pawn) {
+        long pawnPosition = pawn.getBitboard();
+        int[] pawnRowCol = movePositionToRowCol(pawnPosition);
+
+        // Determine the direction of movement based on the pawn's color
+        int direction = pawn.isWhite() ? -1 : 1;
+
+        // Move the pawn step by step toward the promotion row
+        int promotionRow = pawn.isWhite() ? 0 : 7;
+        while (pawnRowCol[0] != promotionRow) {
+            int[] nextRowCol = {pawnRowCol[0] + direction, pawnRowCol[1]};
+            model.setSelectedPiece(pawnRowCol[0], pawnRowCol[1]);
+            model.updateTurn(pawnRowCol[0], pawnRowCol[1], nextRowCol[0], nextRowCol[1]);
+            pawnRowCol = nextRowCol;
+        }
+
+        // Replace the pawn with a Queen (or another piece)
+        Piece promotedPiece = new Queen(1L << (promotionRow * 8 + pawnRowCol[1]), pawn.isWhite());
+        model.replacePiece(pawn, promotedPiece);
+    }
+
+    private boolean makeBestMoveInvolvingKing(ArrayList<ArrayList<Piece>> pieces) {
+        ArrayList<Piece> weakOpponentPawns = findWeakPawns(pieces.get(0).get(0).isWhite() ? model.getBlackPieces() : model.getWhitePieces()); // Get weak opponent pawns
+        double maxScore = Double.MIN_VALUE;
+        int[] bestMoveStart = {-1, -1};
+        int[] bestMoveEnd = {-1, -1};
+
+        for (ArrayList<Piece> pieceList : pieces) {
+            for (Piece piece : pieceList) {
+                long moves = getAvailableMoves(piece.getBitboard(), model);
+                int[] pieceRowCol = movePositionToRowCol(piece.getBitboard());
+
+                for (int i = 0; i < 64; i++) {
+                    long move = 1L << i;
+                    if ((moves & move) != 0) {
+                        int[] moveRowCol = movePositionToRowCol(move);
+                        double minDistanceToWeakPawn = Double.MAX_VALUE;
+
+                        // Calculate the minimum distance to any weak opponent pawn
+                        for (Piece weakPawn : weakOpponentPawns) {
+                            int[] weakPawnRowCol = movePositionToRowCol(weakPawn.getBitboard());
+                            double distance = calculateDistance(moveRowCol, weakPawnRowCol);
+                            minDistanceToWeakPawn = Math.min(minDistanceToWeakPawn, distance);
+                        }
+
+                        double positionScore = simulateMoveAndEvaluate(piece, move);
+
+                        // Combine position score and proximity to the weak pawns
+                        double combinedScore = positionScore - minDistanceToWeakPawn;
+                        if (combinedScore > maxScore) {
+                            maxScore = combinedScore;
+                            bestMoveStart = pieceRowCol;
+                            bestMoveEnd = moveRowCol;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (bestMoveStart[0] != -1 && bestMoveEnd[0] != -1) {
+            model.setSelectedPiece(bestMoveStart[0], bestMoveStart[1]);
+            model.updateTurn(bestMoveStart[0], bestMoveStart[1], bestMoveEnd[0], bestMoveEnd[1]);
+            return true;
+        }
+        return false;
+    }
+
+    private double calculateDistance(int[] pos1, int[] pos2) {
+        return Math.sqrt(Math.pow(pos1[0] - pos2[0], 2) + Math.pow(pos1[1] - pos2[1], 2));
+    }
+
+    private ArrayList<Piece> findWeakPawns(ArrayList<ArrayList<Piece>> opponentPieces) {
+        ArrayList<Piece> weakPawns = new ArrayList<>();
+        for (ArrayList<Piece> pieceList : opponentPieces) {
+            for (Piece piece : pieceList) {
+                if (piece instanceof WhitePawn || piece instanceof BlackPawn) {
+                    if (isWeakPawn(piece, opponentPieces)) {
+                        weakPawns.add(piece);
+                    }
+                }
+            }
+        }
+        return weakPawns;
+    }
+
+    private boolean isWeakPawn(Piece pawn, ArrayList<ArrayList<Piece>> pieces) {
+        long pawnPosition = pawn.getBitboard();
+        boolean isWhite = pawn.isWhite();
+
+        // Masks for file boundaries
+        long notAFile = 0xFEFEFEFEFEFEFEFEL; // Exclude A-file
+        long notHFile = 0x7F7F7F7F7F7F7F7FL; // Exclude H-file
+
+        // Get adjacent files
+        long leftFile = (pawnPosition << 1) & notAFile;
+        long rightFile = (pawnPosition >> 1) & notHFile;
+
+        // Get all pawns of the same color
+        ArrayList<Piece> ownPawns = pieces.get(0);
+        long opponentPawns = 0L;
+        for (Piece p : ownPawns) {
+            opponentPawns |= p.getBitboard();
+        }
+
+        // Check ranks below the pawn
+        long ranksBelow = isWhite
+                ? (leftFile >> 8) | (rightFile >> 8) // White pawns move down
+                : (leftFile << 8) | (rightFile << 8); // Black pawns move up
+
+        // If no pawns are in the adjacent files below, the pawn is weak
+        return (ranksBelow & opponentPawns) == 0;
+    }
+
+
+
+    private ArrayList<Piece> getWeakOppPieces() {
+        ArrayList<Piece> weakPieces = new ArrayList<>();
+        ArrayList<ArrayList<Piece>> opponentPieces = model.isWhiteTurn() ? model.getBlackPieces() : model.getWhitePieces();
+        for (ArrayList<Piece> pieceList : opponentPieces) {
+            for (Piece piece : pieceList) {
+                if(evaluateThreat(piece, opponentPieces).getEvaluation() < 0) {
+                    weakPieces.add(piece);
+                }
+            }
+        }
+        return weakPieces;
+    }
+
+    private boolean attacKing(ArrayList<ArrayList<Piece>> pieces, double score) {
+        double maxPos = Double.MIN_VALUE;
+        int [] max = {-1, -1}, poStart = {-1, -1};
+        King king = (King)pieces.get(5).get(0);
+        long kingPos = king.getBitboard();
+        long kingSafteyPos = getKingSurroundingBits(kingPos);
+        for(ArrayList<Piece> pieceList : pieces) {
+            for (Piece p : pieceList) {
+                long moves = getAvailableMoves(p.getBitboard(), model);
+                if((moves & kingSafteyPos) != 0) {
+                    moves &= kingSafteyPos;
+                    if(Long.bitCount(moves) > 1) {
+                        for (int i = 0; i < 64; i++) {
+                            long move = 1L << i;
+                            if ((moves & move) != 0) {
+                                double s = simulateMoveAndEvaluate(p, move);
+                                if (s > maxPos) {
+                                    maxPos = s;
+                                    max = movePositionToRowCol(move);
+                                    poStart = movePositionToRowCol(p.getBitboard());
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        double s = simulateMoveAndEvaluate(p, moves);
+                        if (s > maxPos) {
+                            maxPos = s;
+                            max = movePositionToRowCol(moves);
+                            poStart = movePositionToRowCol(p.getBitboard());
+                        }
+                    }
+                }
+            }
+        }
+        if(max[0] != -1 && max[1] != -1 && maxPos > score) {
+            model.setSelectedPiece(poStart[0], poStart[1]);
+            model.updateTurn(poStart[0], poStart[1], max[0], max[1]);
+            return true;
+        }
+        return false;
+    }
+
+    private long getKingSurroundingBits(long kingPosition) {
+        long notAFile = 0xFEFEFEFEFEFEFEFEL; // Mask to exclude the A-file
+        long notHFile = 0x7F7F7F7F7F7F7F7FL; // Mask to exclude the H-file
+
+        long left = (kingPosition << 1) & notAFile;
+        long right = (kingPosition >> 1) & notHFile;
+        long up = kingPosition << 8;
+        long down = kingPosition >> 8;
+
+        long upLeft = (up << 1) & notAFile;
+        long upRight = (up >> 1) & notHFile;
+        long downLeft = (down << 1) & notAFile;
+        long downRight = (down >> 1) & notHFile;
+
+        return left | right | up | down | upLeft | upRight | downLeft | downRight;
     }
 
     private void makeAMiddleGameMove(ArrayList<ArrayList<Piece>> pieces, double score, PieceInfo piece, PieceInfo oppPiece) {
@@ -291,14 +562,16 @@ public class AutomatedBot {
                 }
             }
         }
-        if(score > 0){
+        if(score >= 4)
+            attacKing(pieces, score);
+        else if(score > 0){
             attackBestWayPossible(oppPiece.getPiece(), pieces);
         } else {
             defendBestWayPossible(piece.getPiece(), pieces);
         }
     }
 
-    private void attackBestWayPossible(Piece piece, ArrayList<ArrayList<Piece>> pieces) {
+    private boolean attackBestWayPossible(Piece piece, ArrayList<ArrayList<Piece>> pieces) {
         for (ArrayList<Piece> pieceList : pieces) {
             for (Piece p : pieceList) {
                 long moves = getAvailableMoves(p.getBitboard(), model);
@@ -312,12 +585,13 @@ public class AutomatedBot {
                             model.setSelectedPiece(selectedRowCol[0], selectedRowCol[1]);
                             int[] moveRowCol = movePositionToRowCol(move);
                             model.updateTurn(selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]);
+                            return true;
                         }
                     }
                 }
             }
         }
-        makeSafeBestMove();
+        return false;
     }
 
     private void makeAnOpeningMove(ArrayList<ArrayList<Piece>> pieces, double score) {
