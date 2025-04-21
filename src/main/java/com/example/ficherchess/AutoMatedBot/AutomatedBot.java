@@ -781,19 +781,24 @@ public class AutomatedBot {
                     if ((moves & move) != 0) {
                         simulateMoveAndEvaluateNoRevert(p, move, false);
                         long opponentPiecesBitBoard = model.isWhiteTurn() ? Piece.blackPieces : Piece.whitePieces;
+                        long myPiecesBitBoard = model.isWhiteTurn() ? Piece.whitePieces : Piece.blackPieces;
                         if(model.isWhiteTurn()) {
-                            Piece.blackPieces = Piece.whitePieces;
+                            Piece.blackPieces |= Piece.whitePieces;
+                            Piece.whitePieces = 0;
                         }
                         else {
-                            Piece.whitePieces = Piece.blackPieces;
+                            Piece.whitePieces |= Piece.blackPieces;
+                            Piece.blackPieces = 0;
                         }
                         long defences = getAvailableMoves(move, copy);
                         if((defences & piece.getBitboard()) != 0) {
                             if(model.isWhiteTurn()) {
                                 Piece.blackPieces = opponentPiecesBitBoard;
+                                Piece.whitePieces = myPiecesBitBoard;
                             }
                             else {
                                 Piece.whitePieces = opponentPiecesBitBoard;
+                                Piece.blackPieces = myPiecesBitBoard;
                             }
                             int[] selectedRowCol = movePositionToRowCol(piece.getBitboard());
                             int[] moveRowCol = movePositionToRowCol(move);
@@ -804,8 +809,10 @@ public class AutomatedBot {
                         } else {
                             if (model.isWhiteTurn()) {
                                 Piece.blackPieces = opponentPiecesBitBoard;
+                                Piece.whitePieces = myPiecesBitBoard;
                             } else {
                                 Piece.whitePieces = opponentPiecesBitBoard;
+                                Piece.blackPieces = myPiecesBitBoard;
                             }
                         }
                     }
@@ -873,11 +880,14 @@ public class AutomatedBot {
         }
         ArrayList<Piece> defenders = new ArrayList<Piece>();
         long opponentPiecesBitBoard = model.isWhiteTurn() ? Piece.blackPieces : Piece.whitePieces;
+        long myPiecesBitBoard = model.isWhiteTurn() ? Piece.whitePieces : Piece.blackPieces;
         if(model.isWhiteTurn()) {
             Piece.blackPieces |= Piece.whitePieces;
+            Piece.whitePieces = 0;
         }
         else {
             Piece.whitePieces |= Piece.blackPieces;
+            Piece.blackPieces = 0;
         }
         for (ArrayList<Piece> pieceList : pieces) {
             for (Piece piece : pieceList) {
@@ -889,9 +899,11 @@ public class AutomatedBot {
         }
         if(model.isWhiteTurn()) {
             Piece.blackPieces = opponentPiecesBitBoard;
+            Piece.whitePieces = myPiecesBitBoard;
         }
         else {
             Piece.whitePieces = opponentPiecesBitBoard;
+            Piece.blackPieces = myPiecesBitBoard;
         }
         for(Piece piece : attackers) {
             pInfo.setEvaluation(pInfo.getEvaluation() + piece.getWeight());
@@ -1041,10 +1053,6 @@ public class AutomatedBot {
 
 
     private long getAvailableMoves(long pos, Model model) {
-        long allPieces = Piece.allPieces;
-        long whitePieces = Piece.whitePieces;
-        long blackPieces = Piece.blackPieces;
-        boolean check = Piece.check;
         this.copy = model.getCopy();
         int[]rowCol = movePositionToRowCol(pos);
         copy.setSelectedPiece(rowCol[0], rowCol[1]);
