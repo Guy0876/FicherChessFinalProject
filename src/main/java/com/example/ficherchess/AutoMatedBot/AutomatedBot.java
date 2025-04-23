@@ -281,14 +281,13 @@ public class AutomatedBot {
                     if (oppPInfo.getAction().equals("move") ||
                             (oppPInfo.getEvaluation() < 0 && oppPInfo.getAction().equals("defend"))) {
                         takeBestWayPossible(oppPInfo.getPiece(), pieces);
+                    } else if(opening){
+                        makeAnOpeningMove(pieces, score);
+                    } else if (middleGame){
+                        makeAMiddleGameMove(pieces, score, pInfo, oppPInfo);
+                    } else if (endGame){
+                        makeAnEndGameMove(pieces, score);
                     }
-                }
-                if(opening){
-                    makeAnOpeningMove(pieces, score);
-                } else if (middleGame){
-                    makeAMiddleGameMove(pieces, score, pInfo, oppPInfo);
-                } else if (endGame){
-                    makeAnEndGameMove(pieces, score);
                 }
             }
         }
@@ -313,7 +312,7 @@ public class AutomatedBot {
 
     private void makeSafeBestMove() {
         ArrayList<ArrayList<Piece>> pieces = model.isWhiteTurn() ? model.getWhitePieces() : model.getBlackPieces();
-        double maxPos = 0;
+        double maxPos = Double.MIN_VALUE;
         int [] maxRowCol = {-1, -1};
         int [] pieceRowCol = {-1, -1};
         for (ArrayList<Piece> pieceList : pieces) {
@@ -326,7 +325,7 @@ public class AutomatedBot {
                         if ((moves & move) != 0) {
                             double pos = simulateMoveAndEvaluate(piece, move, false);
                             int [] movePosition = movePositionToRowCol(move);
-                            if (pos > maxPos && !(chechIfMoveHasBeenMade(new int[]{pieceRowCol[0], pieceRowCol[1], movePosition[0], movePosition[1]}) || depth > 0)) {
+                            if (pos > maxPos && (!chechIfMoveHasBeenMade(new int[]{pieceRowCol[0], pieceRowCol[1], movePosition[0], movePosition[1]}) || depth > 0)) {
                                 maxPos = pos;
                                 maxRowCol = movePosition;
                                 model.setSelectedPiece(pieceRowCol[0], pieceRowCol[1]);
@@ -422,7 +421,6 @@ public class AutomatedBot {
         // Determine the ranks ahead of the pawn
         long ranksAhead = isWhite ? (relevantFiles << 8) | (relevantFiles << 16) | (relevantFiles << 24) | (relevantFiles << 32) | (relevantFiles << 40)
                 : (relevantFiles >> 8) | (relevantFiles >> 16) | (relevantFiles >> 24) | (relevantFiles >> 32) | (relevantFiles >> 40);
-
         // Check if there are any opponent pawns in the ranks ahead
         return (ranksAhead & opponentPawns) == 0;
     }
@@ -454,7 +452,7 @@ public class AutomatedBot {
 
     private boolean makeBestMoveInvolvingKing(ArrayList<ArrayList<Piece>> pieces) {
         ArrayList<Piece> weakOpponentPawns = findWeakPawns(pieces.get(0).get(0).isWhite() ? model.getBlackPieces() : model.getWhitePieces()); // Get weak opponent pawns
-        double maxScore = Double.MIN_VALUE;
+        double maxScore = -Double.MAX_VALUE;
         int[] bestMoveStart = {-1, -1};
         int[] bestMoveEnd = {-1, -1};
 
@@ -563,7 +561,7 @@ public class AutomatedBot {
     }
 
     private boolean attacKing(ArrayList<ArrayList<Piece>> pieces, double score) {
-        double maxPos = Double.MIN_VALUE;
+        double maxPos = -Double.MAX_VALUE;
         int [] max = {-1, -1}, poStart = {-1, -1};
         King king = (King)pieces.get(5).get(0);
         long kingPos = king.getBitboard();
@@ -628,7 +626,7 @@ public class AutomatedBot {
     }
 
     private void makeAMiddleGameMove(ArrayList<ArrayList<Piece>> pieces, double score, PieceInfo piece, PieceInfo oppPiece) {
-        double maxPos = Double.MIN_VALUE;
+        double maxPos = -Double.MAX_VALUE;
         int [] max = {-1, -1}, poStart = {-1, -1};
         King king = (King)pieces.get(5).get(0);
         long kingPos = king.getBitboard();
@@ -645,7 +643,7 @@ public class AutomatedBot {
                     max = movePosition;
                 }
             }
-            if(score != Double.MIN_VALUE) {
+            if(score != -Double.MAX_VALUE) {
                 if(max[0] != -1 && max[1] != -1 && maxPos > score) {
                     model.setSelectedPiece(poStart[0], poStart[1]);
                     lastMove = new int[]{poStart[0], poStart[1], max[0], max[1]};
@@ -690,7 +688,7 @@ public class AutomatedBot {
 
     private void makeAnOpeningMove(ArrayList<ArrayList<Piece>> pieces, double score) {
         int [] max = {-1, -1}, poStart = {-1, -1};
-        double maxPos = Double.MIN_VALUE;
+        double maxPos = -Double.MAX_VALUE;
         for(ArrayList<Piece> pieceList : pieces) {
             for(Piece p : pieceList) {
                  if(p instanceof Knight){
@@ -741,6 +739,11 @@ public class AutomatedBot {
                  }
             }
         }
+        if (poStart[0] == -1 || poStart[1] == -1 || max[0] == -1 || max[1] == -1) {
+            System.out.println("Fallback — makeSafeBestMove()");
+            makeSafeBestMove();
+            return;
+        }
         model.setSelectedPiece(poStart[0], poStart[1]);
         lastMove = new int[]{poStart[0], poStart[1], max[0], max[1]};
         model.updateTurn(poStart[0], poStart[1], max[0], max[1]);
@@ -748,7 +751,7 @@ public class AutomatedBot {
 
     private void makeBestMoveForPiece(Piece p) {
         ArrayList<ArrayList<Piece>> pieces = model.isWhiteTurn() ? model.getWhitePieces() : model.getBlackPieces();
-        double maxPos = Double.MIN_VALUE;
+        double maxPos = -Double.MAX_VALUE;
         int [] maxRowCol = {-1, -1};
         int [] pieceRowCol = movePositionToRowCol(p.getBitboard());
         long moves = getAvailableMoves(p.getBitboard(), model);
@@ -780,26 +783,24 @@ public class AutomatedBot {
                     long move = 1L << i;
                     if ((moves & move) != 0) {
                         simulateMoveAndEvaluateNoRevert(p, move, false);
-                        long opponentPiecesBitBoard = model.isWhiteTurn() ? Piece.blackPieces : Piece.whitePieces;
-                        long myPiecesBitBoard = model.isWhiteTurn() ? Piece.whitePieces : Piece.blackPieces;
-                        if(model.isWhiteTurn()) {
+                        long originalWhite = Piece.whitePieces;
+                        long originalBlack = Piece.blackPieces;
+
+                        if (p.isWhite()) {
                             Piece.blackPieces |= Piece.whitePieces;
                             Piece.whitePieces = 0;
-                        }
-                        else {
+
+                        } else {
                             Piece.whitePieces |= Piece.blackPieces;
                             Piece.blackPieces = 0;
                         }
+
+
                         long defences = getAvailableMoves(move, copy);
                         if((defences & piece.getBitboard()) != 0) {
-                            if(model.isWhiteTurn()) {
-                                Piece.blackPieces = opponentPiecesBitBoard;
-                                Piece.whitePieces = myPiecesBitBoard;
-                            }
-                            else {
-                                Piece.whitePieces = opponentPiecesBitBoard;
-                                Piece.blackPieces = myPiecesBitBoard;
-                            }
+                            // Restore original state
+                            Piece.whitePieces = originalWhite;
+                            Piece.blackPieces = originalBlack;
                             int[] selectedRowCol = movePositionToRowCol(piece.getBitboard());
                             int[] moveRowCol = movePositionToRowCol(move);
                             if(chechIfMoveHasBeenMade(new int[]{selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]}) && depth == 0) {continue;}
@@ -807,13 +808,9 @@ public class AutomatedBot {
                             lastMove = new int[]{selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]};
                             model.updateTurn(selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]);
                         } else {
-                            if (model.isWhiteTurn()) {
-                                Piece.blackPieces = opponentPiecesBitBoard;
-                                Piece.whitePieces = myPiecesBitBoard;
-                            } else {
-                                Piece.whitePieces = opponentPiecesBitBoard;
-                                Piece.blackPieces = myPiecesBitBoard;
-                            }
+                            // Restore original state
+                            Piece.whitePieces = originalWhite;
+                            Piece.blackPieces = originalBlack;
                         }
                     }
                 }
@@ -832,7 +829,7 @@ public class AutomatedBot {
                     for(int i = 0; i < 64; i++) {
                         long move = 1L << i;
                         if((move & piece.getBitboard()) != 0) {
-                            int[] selectedRowCol = movePositionToRowCol(piece.getBitboard());
+                            int[] selectedRowCol = movePositionToRowCol(p.getBitboard());
                             int[] moveRowCol = movePositionToRowCol(move);
                             if(chechIfMoveHasBeenMade(new int[]{selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]}) && depth == 0) {continue;}
                             model.setSelectedPiece(selectedRowCol[0], selectedRowCol[1]);
@@ -845,103 +842,6 @@ public class AutomatedBot {
             }
         }
         return false;
-    }
-
-    private PieceInfo getMostThreatenedPiece(ArrayList<ArrayList<Piece>> pieces) {
-        PieceInfo mostThreatenedPiece = new PieceInfo(null, "", Double.MIN_VALUE);
-        for (ArrayList<Piece> pieceList : pieces) {
-            for (Piece piece : pieceList) {
-                PieceInfo threatInfo = evaluateThreat(piece, pieces, model);
-                if(threatInfo.getAction().equals(mostThreatenedPiece.getAction())){
-                    if(threatInfo.getEvaluation() > mostThreatenedPiece.getEvaluation()) {
-                        mostThreatenedPiece = threatInfo;
-                    }
-                } else if (threatInfo.getAction().equals("move")) {
-                    mostThreatenedPiece = threatInfo;
-                } else if (threatInfo.getAction().equals("defend")) {
-                    mostThreatenedPiece = threatInfo;
-                }
-            }
-        }
-        return mostThreatenedPiece;
-    }
-
-    private PieceInfo evaluateThreat(Piece p, ArrayList<ArrayList<Piece>> pieces, Model model) {
-        PieceInfo pInfo = new PieceInfo(p, "", 0);
-        ArrayList<ArrayList<Piece>> opponentPieces = pieces.get(0).get(0).isWhite() ? model.getBlackPieces() : model.getWhitePieces();
-        ArrayList<Piece> attackers = new ArrayList<Piece>();
-        for (ArrayList<Piece> pieceList : opponentPieces) {
-            for (Piece piece : pieceList) {
-                long attacks = getAvailableMoves(piece.getBitboard(), model);
-                if ((attacks & p.getBitboard()) != 0) {
-                    attackers.add(piece);
-                }
-            }
-        }
-        ArrayList<Piece> defenders = new ArrayList<Piece>();
-        long opponentPiecesBitBoard = model.isWhiteTurn() ? Piece.blackPieces : Piece.whitePieces;
-        long myPiecesBitBoard = model.isWhiteTurn() ? Piece.whitePieces : Piece.blackPieces;
-        if(model.isWhiteTurn()) {
-            Piece.blackPieces |= Piece.whitePieces;
-            Piece.whitePieces = 0;
-        }
-        else {
-            Piece.whitePieces |= Piece.blackPieces;
-            Piece.blackPieces = 0;
-        }
-        for (ArrayList<Piece> pieceList : pieces) {
-            for (Piece piece : pieceList) {
-                long defences = getAvailableMoves(piece.getBitboard(), model);
-                if ((defences & p.getBitboard()) != 0) {
-                    defenders.add(piece);
-                }
-            }
-        }
-        if(model.isWhiteTurn()) {
-            Piece.blackPieces = opponentPiecesBitBoard;
-            Piece.whitePieces = myPiecesBitBoard;
-        }
-        else {
-            Piece.whitePieces = opponentPiecesBitBoard;
-            Piece.blackPieces = myPiecesBitBoard;
-        }
-        for(Piece piece : attackers) {
-            pInfo.setEvaluation(pInfo.getEvaluation() + piece.getWeight());
-        }
-        for(Piece piece : defenders) {
-            pInfo.setEvaluation(pInfo.getEvaluation() - piece.getWeight());
-        }
-        if(attackers.size() == defenders.size()) {
-            if(pInfo.getEvaluation() > 0) {
-                pInfo.setAction("nothing");
-            }
-            else if(pInfo.getEvaluation() < 0) {
-                pInfo.setAction("defend");
-            }
-            else {
-                int [] rowCol = movePositionToRowCol(p.getBitboard());
-                double [][][] piecePos = model.isWhiteTurn() ? Finals.WhitePiecePosition : Finals.BlackPiecePosition;
-                if(piecePos[piecePosIndex(p)][rowCol[0]][rowCol[1]] > 0) {
-                    pInfo.setAction("defend");
-                }
-                else {
-                    pInfo.setAction("nothing");
-                }
-            }
-        }
-        else if(attackers.size() < defenders.size()) {
-            pInfo.setAction("nothing");
-        }
-        else if(attackers.size() > defenders.size()) {
-            if(pInfo.getEvaluation() < 0 && pInfo.getEvaluation() > -3) {
-                pInfo.setAction("defend");
-            } else if(pInfo.getEvaluation() < -3) {
-                pInfo.setAction("move");
-            } else {
-                pInfo.setAction("nothing");
-            }
-        }
-        return pInfo;
     }
 
     private void handleCheckSituation() {
@@ -1009,7 +909,7 @@ public class AutomatedBot {
                 for (int i = 0; i < 64; i++) {
                     long move = 1L << i;
                     if ((moves & move) != 0) {
-                        if(simulateMoveAndEvaluate(piece, move, false) == Double.MIN_VALUE){
+                        if(simulateMoveAndEvaluate(piece, move, false) == -Double.MAX_VALUE){
                             if(!preventCheckMate(move)){
                                 if(!takeBestWayPossible(piece, (oppPieces == model.getWhitePieces()) ? model.getBlackPieces() : model.getWhitePieces())) {
                                     makeSafeBestMove();
@@ -1067,7 +967,6 @@ public class AutomatedBot {
         this.copy = model.getCopy();
         int[] selectedRowCol = movePositionToRowCol(piece.getBitboard());
         copy.setSelectedPiece(selectedRowCol[0], selectedRowCol[1]);
-        piece = copy.getSelectedPiece();
         int[] moveRowCol = movePositionToRowCol(movePosition);
         if(isCastle){
             copy.isLegalMove(selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]);
@@ -1093,7 +992,6 @@ public class AutomatedBot {
         this.copy = model.getCopy();
         int[] selectedRowCol = movePositionToRowCol(piece.getBitboard());
         copy.setSelectedPiece(selectedRowCol[0], selectedRowCol[1]);
-        piece = copy.getSelectedPiece();
         int[] moveRowCol = movePositionToRowCol(movePosition);
         if(isCastle){
             copy.isLegalMove(selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]);
@@ -1128,16 +1026,6 @@ public class AutomatedBot {
         else {
             score += Finals.BlackPiecePosition[i][piecePos[0]][piecePos[1]];
         }
-        PieceInfo threatInfo = evaluateThreat(p, pieces, copy);
-        if(threatInfo.getAction().equals("defend")) {
-            score += 0.2 * p.getWeight();
-        }
-        else if(threatInfo.getAction().equals("move")) {
-            score += threatInfo.getEvaluation();
-        }
-        else if(threatInfo.getAction().equals("nothing")) {
-            score += 0.5 * p.getWeight();
-        }
         return score;
     }
 
@@ -1148,17 +1036,151 @@ public class AutomatedBot {
         return new int[]{row, col}; // Return as an array [row, col]
     }
 
+    // Enhanced evaluatePosition with improved heuristics
     private double evaluatePosition(ArrayList<ArrayList<Piece>> pieces, Model model) {
         double score = 0;
-        if(model.isCheckmate(pieces.get(0).get(0).isWhite())){return Double.MIN_VALUE;}
-        else if (model.isCheckmate(!pieces.get(0).get(0).isWhite())){return Double.MAX_VALUE;}
+        if (model.isCheckmate(pieces.get(0).get(0).isWhite())) return -Double.MAX_VALUE;
+        if (model.isCheckmate(!pieces.get(0).get(0).isWhite())) return Double.MAX_VALUE;
+
         for (ArrayList<Piece> pieceList : pieces) {
             for (Piece p : pieceList) {
                 score += evaluatePiece(p, piecePosIndex(p), pieces);
+                score += evaluateMobility(p, model);
+                score += evaluateCenterControl(p, model);
+                score += evaluateActivity(p);
+                if (p instanceof WhitePawn || p instanceof BlackPawn) {
+                    score += evaluatePawnStructure(p, pieces);
+                }
+                PieceInfo threatInfo = evaluateThreat(p, pieces, model);
+                score += threatInfo.getEvaluation();
             }
         }
         King king = (King) pieces.get(5).get(0);
-        return score + getKingSaftey(king.getBitboard(), pieces);
+        return score + getKingSaftey(king.getBitboard(), pieces) * 0.1;
+    }
+
+    private double evaluateMobility(Piece p, Model model) {
+        long moves = getAvailableMoves(p.getBitboard(), model);
+        return 0.05 * Long.bitCount(moves); // reward pieces with more options
+    }
+
+    private double evaluateCenterControl(Piece p, Model model) {
+        long center = 0x0000001818000000L; // squares d4, e4, d5, e5
+        long control = p.possibleMoves(p.getBitboard()) & center;
+        return 0.2 * Long.bitCount(control);
+    }
+
+    private double evaluateActivity(Piece p) {
+        int[] pos = movePositionToRowCol(p.getBitboard());
+        boolean isBackRank = p.isWhite() ? pos[0] == 7 : pos[0] == 0;
+        return isBackRank ? -0.1 * p.getWeight() : 0.1 * p.getWeight();
+    }
+
+    private double evaluatePawnStructure(Piece p, ArrayList<ArrayList<Piece>> pieces) {
+        long fileMask = 0x0101010101010101L;
+        long position = p.getBitboard();
+        int col = movePositionToRowCol(position)[1];
+        long colMask = fileMask << col;
+
+        long pawnBitboard = 0;
+        for (Piece pawn : pieces.get(0)) {
+            pawnBitboard |= pawn.getBitboard();
+        }
+
+        boolean isDoubled = Long.bitCount(pawnBitboard & colMask) > 1;
+        boolean isIsolated = true;
+        if (col > 0) isIsolated &= (pawnBitboard & (fileMask << (col - 1))) == 0;
+        if (col < 7) isIsolated &= (pawnBitboard & (fileMask << (col + 1))) == 0;
+
+        double penalty = 0.0;
+        if (isDoubled) penalty -= 0.2;
+        if (isIsolated) penalty -= 0.3;
+
+        return penalty;
+    }
+
+    private PieceInfo evaluateThreat(Piece p, ArrayList<ArrayList<Piece>> pieces, Model model) {
+        ArrayList<ArrayList<Piece>> opponentPieces = p.isWhite() ? model.getBlackPieces() : model.getWhitePieces();
+        ArrayList<ArrayList<Piece>> allies = p.isWhite() ? model.getWhitePieces() : model.getBlackPieces();
+        long pos = p.getBitboard();
+
+        int attackers = 0;
+        int defenders = 0;
+
+        for (ArrayList<Piece> group : opponentPieces) {
+            for (Piece opp : group) {
+                if ((opp.possibleMoves(opp.getBitboard()) & pos) != 0) {
+                    attackers += opp.getWeight();
+                }
+            }
+        }
+
+        // Temporarily merge both sides to detect friendly targeting
+        long originalWhite = Piece.whitePieces;
+        long originalBlack = Piece.blackPieces;
+
+        if (p.isWhite()) {
+            Piece.blackPieces |= Piece.whitePieces;
+            Piece.whitePieces = 0;
+
+        } else {
+            Piece.whitePieces |= Piece.blackPieces;
+            Piece.blackPieces = 0;
+        }
+
+        for (ArrayList<Piece> group : allies) {
+            for (Piece ally : group) {
+                if ((ally.possibleMoves(ally.getBitboard()) & pos) != 0) {
+                    defenders += ally.getWeight();
+                }
+            }
+        }
+
+        // Restore original state
+        Piece.whitePieces = originalWhite;
+        Piece.blackPieces = originalBlack;
+
+        int balance = defenders - attackers;
+        double eval;
+        String action;
+
+        if (attackers == 0) {
+            eval = 0.1 * p.getWeight();
+            action = "nothing";
+        } else if (balance > 3) {
+            eval = -0.5 * defenders;
+            action = "move";
+        } else if (balance >= 0) {
+            eval = -0.2 * defenders;
+            action = "defend";
+        } else if (balance < -2) {
+            eval = 0.2 * attackers;
+            action = "nothing";
+        } else {
+            eval = 0.5 * attackers;
+            action = "nothing";
+        }
+
+        return new PieceInfo(p, action, eval);
+    }
+
+    private PieceInfo getMostThreatenedPiece(ArrayList<ArrayList<Piece>> pieces) {
+        PieceInfo mostThreatenedPiece = new PieceInfo(null, "", -Double.MAX_VALUE);
+        for (ArrayList<Piece> pieceList : pieces) {
+            for (Piece piece : pieceList) {
+                PieceInfo threatInfo = evaluateThreat(piece, pieces, model);
+                if(threatInfo.getAction().equals(mostThreatenedPiece.getAction())){
+                    if(threatInfo.getEvaluation() > mostThreatenedPiece.getEvaluation()) {
+                        mostThreatenedPiece = threatInfo;
+                    }
+                } else if (threatInfo.getAction().equals("move")) {
+                    mostThreatenedPiece = threatInfo;
+                } else if (threatInfo.getAction().equals("defend")) {
+                    mostThreatenedPiece = threatInfo;
+                }
+            }
+        }
+        return mostThreatenedPiece;
     }
 
     public double getKingSaftey(long kingPosition, ArrayList<ArrayList<Piece>> pieces) {
