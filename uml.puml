@@ -1,0 +1,276 @@
+@startuml
+class com.example.ficherchess.AutoMatedBot.AutomatedBot {
+- Model model
+- Model copy
+- boolean opening
+- boolean middleGame
+- boolean endGame
+- int totalMoves
+- int[] lastMove
+- MoveSum[] moveSums
+- int depth
++ int[] makeBestMove()
+- void makeMove()
+- boolean chechIfMoveHasBeenMade(int[])
+- void makeSafeBestMove()
+- void makeAnEndGameMove(ArrayList<ArrayList<Piece>>,double)
+- Piece findPassedPawn(ArrayList<ArrayList<Piece>>)
+- boolean isPassedPawn(Piece,ArrayList<ArrayList<Piece>>)
+- boolean promotePawn(Piece)
+- boolean makeBestMoveInvolvingKing(ArrayList<ArrayList<Piece>>)
+- double calculateDistance(int[],int[])
+- ArrayList<Piece> findWeakPawns(ArrayList<ArrayList<Piece>>)
+- boolean isWeakPawn(Piece,ArrayList<ArrayList<Piece>>)
+- ArrayList<Piece> getWeakOppPieces()
+- boolean attacKing(ArrayList<ArrayList<Piece>>,double)
+- long getKingSurroundingBits(long)
+- void makeAMiddleGameMove(ArrayList<ArrayList<Piece>>,double,PieceInfo,PieceInfo)
+- boolean attackBestWayPossible(Piece,ArrayList<ArrayList<Piece>>)
+- void makeAnOpeningMove(ArrayList<ArrayList<Piece>>,double)
+- void makeBestMoveForPiece(Piece)
+- void defendBestWayPossible(Piece,ArrayList<ArrayList<Piece>>)
+- boolean takeBestWayPossible(Piece,ArrayList<ArrayList<Piece>>)
+- void handleCheckSituation()
+- boolean attemptCheckmate()
+- boolean preventOpponentCheckmate()
+- boolean preventCheckMate(long)
+- long getAvailableMoves(long,Model)
+- double simulateMoveAndEvaluate(Piece,long,boolean)
+- void simulateMoveAndEvaluateNoRevert(Piece,long,boolean)
+- int piecePosIndex(Piece)
++ double evaluatePiece(Piece,int,ArrayList<ArrayList<Piece>>)
++ int[] movePositionToRowCol(long)
+- double evaluatePosition(ArrayList<ArrayList<Piece>>,Model)
+- double evaluateMobility(Piece,Model)
+- double evaluateCenterControl(Piece,Model)
+- double evaluateActivity(Piece)
+- double evaluatePawnStructure(Piece,ArrayList<ArrayList<Piece>>)
+- PieceInfo evaluateThreat(Piece,ArrayList<ArrayList<Piece>>,Model)
+- PieceInfo getMostThreatenedPiece(ArrayList<ArrayList<Piece>>)
++ double getKingSaftey(long,ArrayList<ArrayList<Piece>>)
+}
+
+
+class com.example.ficherchess.Pieces.Knight {
++ long possibleMoves(long)
++ Knight clone()
+}
+
+class com.example.ficherchess.FischerRandomChess {
+- int desiredId
+- List<Integer> freeFields
+- char[] startingPosition
+- long whitePawns
+- long blackPawns
++ char[] getStartingPosition()
++ long getWhitePawns()
++ long getWhiteKnights()
++ long getWhiteBishops()
++ long getWhiteRooks()
++ long getWhiteQueen()
++ long getWhiteKing()
++ long getBlackPawns()
++ long getBlackKnights()
++ long getBlackBishops()
++ long getBlackRooks()
++ long getBlackQueen()
++ long getBlackKing()
+- void generateStartingPosition()
+- void generateBitboards()
+- void updateFreeFields()
+- void placeFirstBishop()
+- void placeSecondBishop()
+- void placeQueen()
+- void placeKnights()
+- void placeRooksAndKing()
+}
+
+
+class com.example.ficherchess.Pieces.Bishop {
++ long possibleMoves(long)
++ Bishop clone()
+}
+
+interface com.example.ficherchess.IView {
+~ void movePiece(int,int,int,int)
+~ void highlightPossibleMoves(long)
+}
+
+class com.example.ficherchess.AutoMatedBot.Finals {
++ {static} double[][][] WhitePiecePosition
++ {static} double[][][] BlackPiecePosition
+}
+
+class com.example.ficherchess.Presenter {
+- IView view
+- Model model
+- AutomatedBot automatedBot
++ void handlePieceSelection(int,int)
++ void handlePieceMove(int,int,int,int)
+}
+
+
+class com.example.ficherchess.Controller {
+- GridPane chessBoard
+- ImageView selectedPiece
+- int selectedRow
+- int selectedCol
+- Presenter presenter
+- Circle selectionHalo
+- boolean isWhiteMove
++ void initialize()
+- String getImageName(char,boolean)
+- void addPiece(String,int,int)
+- void handleSquareClick(MouseEvent)
+- boolean isColor()
+- void addSelectionHalo(int,int)
+- void removeSelectionHalo()
++ void movePiece(int,int,int,int)
+- StackPane getNodeByRowColumnIndex(int,int,GridPane)
++ void highlightPossibleMoves(long)
+- void removePossibleMoveHighlights()
+}
+
+
+class com.example.ficherchess.AutoMatedBot.PieceInfo {
+- Piece piece
+- String action
+- double evaluation
++ Piece getPiece()
++ String getAction()
++ double getEvaluation()
++ void setPiece(Piece)
++ void setAction(String)
++ void setEvaluation(double)
+}
+
+
+abstract class com.example.ficherchess.Pieces.Piece {
+# long bitboard
++ {static} long allPieces
++ {static} long whitePieces
++ {static} long blackPieces
+# boolean isWhite
++ {static} boolean check
+# int weight
++ int getWeight()
++ long getAllPieces()
++ void setAllPieces(long)
++ void setCheck()
++ long getBitboard()
++ void setBitboard(long)
++ {abstract}long possibleMoves(long)
+# long horizontalMoves(long)
+# long verticalMoves(long)
+# long diagonalMoves(long)
++ boolean isWhite()
++ Piece clone()
+}
+
+
+class com.example.ficherchess.Application {
++ void start(Stage)
++ {static} void main(String[])
+}
+
+class com.example.ficherchess.Pieces.King {
+- boolean hasMoved
++ long possibleMoves(long)
++ void setHasMoved(boolean)
++ boolean getHasMoved()
++ King clone()
+}
+
+
+class com.example.ficherchess.Model {
+- ArrayList<ArrayList<Piece>> whitePieces
+- ArrayList<ArrayList<Piece>> blackPieces
+- long possibleMoves
+- Piece selectedPiece
+- boolean isWhiteTurn
+- FischerRandomChess frc
+- Piece lastMovedPiece
+- int[] lastMove
+- long enPassantPosition
++ void initializeBoard()
++ {static} long indexToBitboard(int,int)
++ long setSelectedPiece(int,int)
++ boolean isLegalMove(int,int,int,int)
++ long absolute(long)
+- boolean castle(long,long,boolean,King,Rook)
++ boolean isRookThreatened(boolean,long)
++ boolean updateTurn(int,int,int,int)
++ long getPossibleMoves(long)
++ long findKingPosition(boolean)
++ boolean isKingInCheck(boolean)
++ boolean doesMoveResolveCheck(Piece,long,long)
++ long filterMovesThatResolveCheck(Piece,long,long)
++ boolean isCheckmate(boolean)
++ Model getCopy()
++ ArrayList<ArrayList<Piece>> getWhitePieces()
++ ArrayList<ArrayList<Piece>> getBlackPieces()
++ long getPossibleMoves()
++ Piece getSelectedPiece()
++ boolean isWhiteTurn()
++ FischerRandomChess getFrc()
++ Piece getLastMovedPiece()
++ int[] getLastMove()
++ long getEnPassantPosition()
++ void replacePiece(Piece,Piece)
++ Piece getPieceAt(int,int)
+}
+
+
+class com.example.ficherchess.Pieces.WhitePawn {
++ long possibleMoves(long)
+- long getTwoStepsForward(long)
+- boolean isPawnOnStartingPosition(long)
++ WhitePawn clone()
+}
+
+class com.example.ficherchess.Pieces.BlackPawn {
++ long possibleMoves(long)
+- long getTwoStepsForward(long)
+- boolean isPawnOnStartingPosition(long)
++ BlackPawn clone()
+}
+
+class com.example.ficherchess.Pieces.Rook {
+- boolean hasMovedRight
+- boolean hasMovedLeft
++ long possibleMoves(long)
++ void setHasMovedRight(boolean)
++ void setHasMovedLeft(boolean)
++ boolean getHasMovedRight()
++ boolean getHasMovedLeft()
++ Rook clone()
+}
+
+
+class com.example.ficherchess.Pieces.Queen {
++ long possibleMoves(long)
++ Queen clone()
+}
+
+class com.example.ficherchess.AutoMatedBot.MoveSum {
+- int[] move
+- double score
++ int[] getMove()
++ double getScore()
++ void setScore(double)
+}
+
+
+
+
+com.example.ficherchess.Pieces.Piece <|-- com.example.ficherchess.Pieces.Knight
+com.example.ficherchess.Pieces.Piece <|-- com.example.ficherchess.Pieces.Bishop
+com.example.ficherchess.IView <|.. com.example.ficherchess.Controller
+com.example.ficherchess.Pieces.Cloneable <|.. com.example.ficherchess.Pieces.Piece
+com.example.ficherchess.Application <|-- com.example.ficherchess.Application
+com.example.ficherchess.Pieces.Piece <|-- com.example.ficherchess.Pieces.King
+com.example.ficherchess.Pieces.Piece <|-- com.example.ficherchess.Pieces.WhitePawn
+com.example.ficherchess.Pieces.Piece <|-- com.example.ficherchess.Pieces.BlackPawn
+com.example.ficherchess.Pieces.Piece <|-- com.example.ficherchess.Pieces.Rook
+com.example.ficherchess.Pieces.Piece <|-- com.example.ficherchess.Pieces.Queen
+@enduml
