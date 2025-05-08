@@ -327,7 +327,7 @@ public class Model {
 
         // Check if the move puts the opponent's king in check
         if (isKingInCheck(isWhiteTurn)) {
-            System.out.println((isWhiteTurn ? "Black" : "White") + " king is in check!");
+            System.out.println((isWhiteTurn ? "White" : "Black") + " king is in check!");
             Piece.check = true;
 
             if (isCheckmate(isWhiteTurn)) {
