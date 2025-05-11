@@ -755,7 +755,7 @@ public class AutomatedBot {
                             if ((moves & move) != 0) {
                                 int [] movePosition = movePositionToRowCol(move), position = movePositionToRowCol(p.getBitboard());
                                 if((chechIfMoveHasBeenMade(new int[]{position[0], position[1], movePosition[0], movePosition[1]})) && depth == 0) {continue;}
-                                double pos = simulateMoveAndEvaluate(p, move, false) + 0.5;
+                                double pos = simulateMoveAndEvaluate(p, move, false) + 0.05;
                                 if( pos > maxPos) {
                                     maxPos = pos;
                                     max = movePosition;
@@ -1027,6 +1027,7 @@ public class AutomatedBot {
         }else {
             copy.updateTurn(selectedRowCol[0], selectedRowCol[1], moveRowCol[0], moveRowCol[1]);
         }
+        if (copy.isCheckmate(!piece.isWhite())) return Double.MAX_VALUE;
         // Evaluate the position based on material, center control, and king safety
         // Queen = 9, rook = 5, knight = bishop = 3, pawn = 1,
         // + to the position of the piece from PiecePosition[x][row][col]
@@ -1093,7 +1094,6 @@ public class AutomatedBot {
     // Enhanced evaluatePosition with improved heuristics
     private double evaluatePosition(ArrayList<ArrayList<Piece>> pieces, Model model) {
         double score = 0;
-        if (model.isCheckmate(pieces.get(0).get(0).isWhite())) return -Double.MAX_VALUE;
         if (model.isCheckmate(!pieces.get(0).get(0).isWhite())) return Double.MAX_VALUE;
 
         for (ArrayList<Piece> pieceList : pieces) {
@@ -1107,9 +1107,9 @@ public class AutomatedBot {
                 }
                 PieceInfo threatInfo = evaluateThreat(p, pieces, model);
                 if(threatInfo.getAction().equals("defend")) {
-                    score += threatInfo.getEvaluation() * 2;
+                    score += threatInfo.getEvaluation() * 4;
                 } else if(threatInfo.getAction().equals("move")) {
-                    score += threatInfo.getEvaluation() * 3;
+                    score += threatInfo.getEvaluation() * 6;
                 } else if(threatInfo.getAction().equals("nothing")) {
                     score += threatInfo.getEvaluation() * 0.1;
                 }
@@ -1246,7 +1246,7 @@ public class AutomatedBot {
                     }
                 } else if (threatInfo.getAction().equals("move")) {
                     mostThreatenedPiece = threatInfo;
-                } else if (threatInfo.getAction().equals("defend")) {
+                } else if (threatInfo.getAction().equals("defend") && !mostThreatenedPiece.getAction().equals("move")) {
                     mostThreatenedPiece = threatInfo;
                 }
             }

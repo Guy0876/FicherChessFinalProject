@@ -25,6 +25,14 @@ public class Model {
         initializeBoard();
     }
 
+    public Model() {
+        whitePieces = new ArrayList<>();
+        blackPieces = new ArrayList<>();
+        possibleMoves = 0L;
+        isWhiteTurn = true;
+        frc = null;
+    }
+
     public void initializeBoard() {
         // Initialize white pieces
         ArrayList<Piece> whitePawns = new ArrayList<>();
@@ -325,14 +333,17 @@ public class Model {
         selectedPiece = null;
         enPassantPosition = 0L;
 
+        if (isCheckmate(isWhiteTurn)) {
+            if(isKingInCheck(isWhiteTurn)) {
+                System.out.println((isWhiteTurn ? "Black" : "White") + " checkmate !!!");
+            } else {
+                System.out.println("stalemate !!!");
+            }
+        }
         // Check if the move puts the opponent's king in check
         if (isKingInCheck(isWhiteTurn)) {
             System.out.println((isWhiteTurn ? "White" : "Black") + " king is in check!");
             Piece.check = true;
-
-            if (isCheckmate(isWhiteTurn)) {
-                System.out.println((isWhiteTurn ? "Black" : "White") + " won the game !!!");
-            }
         }
         return true;
     }
@@ -383,38 +394,65 @@ public class Model {
             }
         }
         //Filter moves that resolve check
+
+
         if (Piece.check) {
             moves = filterMovesThatResolveCheck(selectedPiece, moves, specificPiece);
         }
-
-        // Remove moves that put the king in check
-        for (int i = 0; i < 64; i++) {
-            long movePosition = 1L << i;
-            if ((moves & movePosition) != 0) {
-                long originalPosition = selectedPiece.getBitboard();
-                long originalAllPieces = Piece.allPieces;
-                long originalWhitePieces = Piece.whitePieces;
-                long originalBlackPieces = Piece.blackPieces;
-                selectedPiece.setBitboard(movePosition | (selectedPiece.getBitboard() & ~specificPiece));
-                Piece.allPieces = (Piece.allPieces & ~specificPiece) | movePosition;
-                if (selectedPiece.isWhite()) {
-                    Piece.whitePieces = (Piece.whitePieces & ~specificPiece) | movePosition;
-                } else {
-                    Piece.blackPieces = (Piece.blackPieces & ~specificPiece) | movePosition;
-                }
-                if (isKingInCheck(selectedPiece.isWhite())) {
-                    moves &= ~movePosition;
-                }
-                selectedPiece.setBitboard(originalPosition);
-                Piece.allPieces = originalAllPieces;
-                if (selectedPiece.isWhite()) {
-                    Piece.whitePieces = originalWhitePieces;
-                } else {
-                    Piece.blackPieces = originalBlackPieces;
+        else {
+            // Remove moves that put the king in check
+            for (int i = 0; i < 64; i++) {
+                long movePosition = 1L << i;
+                if ((moves & movePosition) != 0) {
+                    long originalPosition = selectedPiece.getBitboard();
+                    long originalAllPieces = Piece.allPieces;
+                    long originalWhitePieces = Piece.whitePieces;
+                    long originalBlackPieces = Piece.blackPieces;
+                    selectedPiece.setBitboard(movePosition | (selectedPiece.getBitboard() & ~specificPiece));
+                    Piece.allPieces = (Piece.allPieces & ~specificPiece) | movePosition;
+                    if (selectedPiece.isWhite()) {
+                        Piece.whitePieces = (Piece.whitePieces & ~specificPiece) | movePosition;
+                    } else {
+                        Piece.blackPieces = (Piece.blackPieces & ~specificPiece) | movePosition;
+                    }
+                    // deal with the captured piece
+                    Piece capturedPiece = null;
+                    for (ArrayList<Piece> pieceList : selectedPiece.isWhite() ? blackPieces : whitePieces) {
+                        for (Piece piece : pieceList) {
+                            if ((piece.getBitboard() & movePosition) != 0) {
+                                piece.setBitboard(piece.getBitboard() & ~movePosition);
+                                capturedPiece = piece;
+                                if (selectedPiece.isWhite()) {
+                                    Piece.blackPieces &= ~movePosition;
+                                } else {
+                                    Piece.whitePieces &= ~movePosition;
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    if (isKingInCheck(selectedPiece.isWhite())) {
+                        moves &= ~movePosition;
+                    }
+                    selectedPiece.setBitboard(originalPosition);
+                    Piece.allPieces = originalAllPieces;
+                    if (selectedPiece.isWhite()) {
+                        Piece.whitePieces = originalWhitePieces;
+                    } else {
+                        Piece.blackPieces = originalBlackPieces;
+                    }
+                    // revert the captured piece
+                    if (capturedPiece != null) {
+                        capturedPiece.setBitboard(capturedPiece.getBitboard() | movePosition);
+                        if (selectedPiece.isWhite()) {
+                            Piece.blackPieces |= movePosition;
+                        } else {
+                            Piece.whitePieces |= movePosition;
+                        }
+                    }
                 }
             }
         }
-
         return moves;
     }
 
@@ -496,6 +534,7 @@ public class Model {
         return !isInCheck;
     }
 
+
     public long filterMovesThatResolveCheck(Piece piece, long moves, long specificPiece) {
 
         long validMoves = 0L;
@@ -526,7 +565,7 @@ public class Model {
 
     // get copy of model that i can change without it doing anything to the model
     public Model getCopy() {
-        Model copy = new Model(frc);
+        Model copy = new Model();
         copy.whitePieces = new ArrayList<>();
         for (ArrayList<Piece> pieceList : whitePieces) {
             ArrayList<Piece> clonedList = new ArrayList<>();

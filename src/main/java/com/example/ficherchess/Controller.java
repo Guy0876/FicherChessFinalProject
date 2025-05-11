@@ -188,6 +188,7 @@ public class Controller implements IView {
                     }
                 }
                 else {
+                    castle = false;
                     if(piece.getUserData().toString().contains("pawn") && newCol != oldCol){
                         int enPassantRow = isWhiteMove ? newRow + 1 : newRow - 1;
                         StackPane enPassantSquare = getNodeByRowColumnIndex(enPassantRow, newCol, chessBoard);
