@@ -224,6 +224,7 @@ public class AutomatedBot {
             depth++;
             makeMove();
             makeMove();
+            makeMove();
             ArrayList<ArrayList<Piece>> pieces = whiteTurn ? model.getWhitePieces() : model.getBlackPieces();
             ArrayList<ArrayList<Piece>> opponentPieces = whiteTurn ? model.getBlackPieces() : model.getWhitePieces();
             double score = evaluatePosition(pieces, model) -
@@ -249,8 +250,20 @@ public class AutomatedBot {
             makeSafeBestMove();
         }
         else {
+            boolean castle = false;
+            ArrayList<Piece> rooks = model.isWhiteTurn() ? model.getWhitePieces().get(4) : model.getBlackPieces().get(4);
+            for(Piece rook : rooks) {
+                int [] rookRowCol = movePositionToRowCol(rook.getBitboard());
+                if(rookRowCol[0] == bestMove[2] && rookRowCol[1] == bestMove[3]) {
+                    castle = true;
+                }
+            }
             model.setSelectedPiece(bestMove[0], bestMove[1]);
-            model.updateTurn(bestMove[0], bestMove[1], bestMove[2], bestMove[3]);
+            if(!castle) {
+                model.updateTurn(bestMove[0], bestMove[1], bestMove[2], bestMove[3]);
+            } else {
+                model.isLegalMove(bestMove[0], bestMove[1], bestMove[2], bestMove[3]);
+            }
             lastMove = new int[]{bestMove[0], bestMove[1], bestMove[2], bestMove[3]};
         }
         totalMoves++;
@@ -273,6 +286,7 @@ public class AutomatedBot {
         if (Piece.check) {
             System.out.println("King is in check. Handling check situation.");
             handleCheckSituation();
+            Piece.check = false;
         } else if (!attemptCheckmate()) {
             System.out.println("No checkmate attempt possible. Preventing opponent checkmate.");
             if (!preventOpponentCheckmate()) {
@@ -291,7 +305,9 @@ public class AutomatedBot {
                     if (oppPInfo.getAction().equals("move") ||
                             (oppPInfo.getEvaluation() < pInfo.getEvaluation() && oppPInfo.getAction().equals("defend"))) {
                         System.out.println("Taking the best way possible to handle opponent's piece.");
-                        takeBestWayPossible(oppPInfo.getPiece(), pieces);
+                        if(!takeBestWayPossible(oppPInfo.getPiece(), pieces)) {
+                            makeSafeBestMove();
+                        }
                     } else {
                         System.out.println("Defending the best way possible.");
                         defendBestWayPossible(pInfo.getPiece(), pieces);
@@ -301,10 +317,18 @@ public class AutomatedBot {
                     if (oppPInfo.getAction().equals("move") ||
                             (oppPInfo.getEvaluation() < 0 && oppPInfo.getAction().equals("defend"))) {
                         System.out.println("Taking the best way possible to handle opponent's piece.");
-                        takeBestWayPossible(oppPInfo.getPiece(), pieces);
+                        if(!takeBestWayPossible(oppPInfo.getPiece(), pieces)) {
+                            makeSafeBestMove();
+                        }
                     } else if (opening) {
                         System.out.println("Making an opening move.");
                         makeAnOpeningMove(pieces, score);
+                        totalMoves++;
+                        if (totalMoves == 12) {
+                            System.out.println("Transitioning from opening to middle game.");
+                            opening = false;
+                            middleGame = true;
+                        }
                     } else if (middleGame) {
                         System.out.println("Making a middle game move.");
                         makeAMiddleGameMove(pieces, score, pInfo, oppPInfo);
@@ -315,12 +339,7 @@ public class AutomatedBot {
                 }
             }
         }
-        totalMoves++;
-        if (totalMoves == 12) {
-            System.out.println("Transitioning from opening to middle game.");
-            opening = false;
-            middleGame = true;
-        }
+
         System.out.println("Exiting makeMove() with lastMove: " + lastMove[0] + ", " + lastMove[1] + ", " + lastMove[2] + ", " + lastMove[3]);
     }
 
@@ -662,7 +681,7 @@ public class AutomatedBot {
     private void makeAMiddleGameMove(ArrayList<ArrayList<Piece>> pieces, double score, PieceInfo piece, PieceInfo oppPiece) {
         System.out.println("Making a middle game move.");
         double maxPos = -Double.MAX_VALUE;
-        int [] max = {-1, -1}, poStart = {-1, -1};
+        int [] max = {-1, -1}, poStart;
         King king = (King)pieces.get(5).get(0);
         long kingPos = king.getBitboard();
         poStart = movePositionToRowCol(kingPos);
@@ -682,15 +701,19 @@ public class AutomatedBot {
                 if(max[0] != -1 && max[1] != -1 && maxPos > score) {
                     model.setSelectedPiece(poStart[0], poStart[1]);
                     lastMove = new int[]{poStart[0], poStart[1], max[0], max[1]};
-                    model.updateTurn(poStart[0], poStart[1], max[0], max[1]);
+                    model.isLegalMove(poStart[0], poStart[1], max[0], max[1]);
                     return;
                 }
             }
         }
-        if(score >= 4)
-            attacKing(pieces, score);
-        else if(score > 0){
-            attackBestWayPossible(oppPiece.getPiece(), pieces);
+        if(score >= 4) {
+            if(!attacKing(pieces, score))
+                if (!attackBestWayPossible(oppPiece.getPiece(), pieces)) {
+                    makeSafeBestMove();
+                }
+        } else if (score > 0) {
+            if(!attackBestWayPossible(oppPiece.getPiece(), pieces))
+                makeSafeBestMove();
         } else {
             defendBestWayPossible(piece.getPiece(), pieces);
         }
