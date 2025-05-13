@@ -252,9 +252,9 @@ public class AutomatedBot {
             depth = 0;
             restoreStatics(allPieces, whitePieces, blackPieces, check);
         }
-        int [] bestMove = moveSums[0].getMove();
-        double maxScore = moveSums[0].getScore();
-        for(int i = 1; i < 5; i++) {
+        int [] bestMove = {-1, -1, -1, -1};
+        double maxScore = -Double.MAX_VALUE;
+        for(int i = 0; i < 5; i++) {
             if (moveSums[i] != null) {
                 if (moveSums[i].getScore() > maxScore) {
                     bestMove = moveSums[i].getMove();
@@ -268,6 +268,10 @@ public class AutomatedBot {
         this.endGame = tempendGame;
         this.totalMoves = temptotalMoves;
         System.out.println("Best move: " + bestMove[0] + ", " + bestMove[1] + ", " + bestMove[2] + ", " + bestMove[3]);
+        if(bestMove[0] == -1 || bestMove[1] == -1 || bestMove[2] == -1 || bestMove[3] == -1) {
+            makeSafeBestMove();
+            return lastMove;
+        }
         boolean castle = false;
         ArrayList<Piece> rooks = model.isWhiteTurn() ? model.getWhitePieces().get(4) : model.getBlackPieces().get(4);
         for(Piece rook : rooks) {
@@ -730,7 +734,7 @@ public class AutomatedBot {
         King king = (King)pieces.get(5).get(0);
         long kingPos = king.getBitboard();
         poStart = movePositionToRowCol(kingPos);
-        double evaluation = pieces.get(0).get(0).isWhite() ? Finals.WhitePiecePosition[0][poStart[0]][poStart[1]] : Finals.BlackPiecePosition[0][poStart[0]][poStart[1]];
+        double evaluation = pieces.get(5).get(0).isWhite() ? Finals.WhitePiecePosition[0][poStart[0]][poStart[1]] : Finals.BlackPiecePosition[0][poStart[0]][poStart[1]];
         if(evaluation < 2) {
             ArrayList<Piece> rooks = pieces.get(3);
             for(Piece r : rooks) {
