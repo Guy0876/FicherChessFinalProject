@@ -8,35 +8,26 @@ public class King extends Piece {
     }
 
     @Override
-    public long possibleMoves(long position){
+    public long possibleMoves(long position) {
         long specificKing = bitboard & position;
         long myPieces = isWhite ? whitePieces : blackPieces;
 
-        // Move up
-        long up = specificKing << 8 & ~myPieces;
+        // File masks to prevent wraparound
+        long notAFile = 0xFEFEFEFEFEFEFEFEL; // Clears column A
+        long notHFile = 0x7F7F7F7F7F7F7F7FL; // Clears column H
 
-        // Move down
-        long down = specificKing >>> 8 & ~myPieces;
+        // One-square moves in 8 directions
+        long up         = (specificKing << 8) & ~myPieces;              // North
+        long down       = (specificKing >>> 8) & ~myPieces;             // South
+        long left       = (specificKing << 1) & notAFile & ~myPieces;   // West
+        long right      = (specificKing >>> 1) & notHFile & ~myPieces;  // East
+        long upLeft     = (specificKing << 9) & notAFile & ~myPieces;   // NW
+        long upRight    = (specificKing << 7) & notHFile & ~myPieces;   // NE
+        long downLeft   = (specificKing >>> 7) & notAFile & ~myPieces;  // SW
+        long downRight  = (specificKing >>> 9) & notHFile & ~myPieces;  // SE
 
-        // Move left
-        long left = specificKing << 1 & ~myPieces;
-
-        // Move right
-        long right = specificKing >>> 1 & ~myPieces;
-
-        // Move up-right
-        long upRight = specificKing << 7 & ~myPieces;
-
-        // Move up-left
-        long upLeft = specificKing << 9 & ~myPieces;
-
-        // Move down-right
-        long downRight = specificKing >>> 9 & ~myPieces;
-
-        //Move down-left
-        long downLeft = specificKing >>> 7 & ~myPieces;
-
-        return (up | down | left | right | upRight | upLeft | downRight | downLeft);
+        // Combine all valid directions
+        return up | down | left | right | upLeft | upRight | downLeft | downRight;
     }
 
     public void setHasMoved(boolean hasMoved) {

@@ -220,11 +220,30 @@ public class AutomatedBot {
             this.totalMoves = temptotalMoves;
             boolean whiteTurn = model.isWhiteTurn();
             makeMove();
+            if(lastMove[0] == -1) {
+                System.out.println("No move made. Exiting makeBestMove.");
+                continue;
+            }
             moveSums[i] = new MoveSum(lastMove, 0);
             depth++;
             makeMove();
+            if(lastMove[0] == -1) {
+                System.out.println("No move made. Exiting makeBestMove.");
+                moveSums[i] = null;
+                continue;
+            }
             makeMove();
+            if(lastMove[0] == -1) {
+                System.out.println("No move made. Exiting makeBestMove.");
+                moveSums[i] = null;
+                continue;
+            }
             makeMove();
+            if(lastMove[0] == -1) {
+                System.out.println("No move made. Exiting makeBestMove.");
+                moveSums[i] = null;
+                continue;
+            }
             ArrayList<ArrayList<Piece>> pieces = whiteTurn ? model.getWhitePieces() : model.getBlackPieces();
             ArrayList<ArrayList<Piece>> opponentPieces = whiteTurn ? model.getBlackPieces() : model.getWhitePieces();
             double score = evaluatePosition(pieces, model) -
@@ -236,9 +255,11 @@ public class AutomatedBot {
         int [] bestMove = moveSums[0].getMove();
         double maxScore = moveSums[0].getScore();
         for(int i = 1; i < 5; i++) {
-            if(moveSums[i].getScore() > maxScore) {
-                bestMove = moveSums[i].getMove();
-                maxScore = moveSums[i].getScore();
+            if (moveSums[i] != null) {
+                if (moveSums[i].getScore() > maxScore) {
+                    bestMove = moveSums[i].getMove();
+                    maxScore = moveSums[i].getScore();
+                }
             }
         }
         this.model = tempModel;
@@ -246,26 +267,22 @@ public class AutomatedBot {
         this.middleGame = tempmiddleGame;
         this.endGame = tempendGame;
         this.totalMoves = temptotalMoves;
-        if(maxScore < -10){
-            makeSafeBestMove();
-        }
-        else {
-            boolean castle = false;
-            ArrayList<Piece> rooks = model.isWhiteTurn() ? model.getWhitePieces().get(4) : model.getBlackPieces().get(4);
-            for(Piece rook : rooks) {
-                int [] rookRowCol = movePositionToRowCol(rook.getBitboard());
-                if(rookRowCol[0] == bestMove[2] && rookRowCol[1] == bestMove[3]) {
-                    castle = true;
-                }
+        System.out.println("Best move: " + bestMove[0] + ", " + bestMove[1] + ", " + bestMove[2] + ", " + bestMove[3]);
+        boolean castle = false;
+        ArrayList<Piece> rooks = model.isWhiteTurn() ? model.getWhitePieces().get(4) : model.getBlackPieces().get(4);
+        for(Piece rook : rooks) {
+            int [] rookRowCol = movePositionToRowCol(rook.getBitboard());
+            if(rookRowCol[0] == bestMove[2] && rookRowCol[1] == bestMove[3]) {
+                castle = true;
             }
-            model.setSelectedPiece(bestMove[0], bestMove[1]);
-            if(!castle) {
-                model.updateTurn(bestMove[0], bestMove[1], bestMove[2], bestMove[3]);
-            } else {
-                model.isLegalMove(bestMove[0], bestMove[1], bestMove[2], bestMove[3]);
-            }
-            lastMove = new int[]{bestMove[0], bestMove[1], bestMove[2], bestMove[3]};
         }
+        model.setSelectedPiece(bestMove[0], bestMove[1]);
+        if(!castle) {
+            model.updateTurn(bestMove[0], bestMove[1], bestMove[2], bestMove[3]);
+        } else {
+            model.isLegalMove(bestMove[0], bestMove[1], bestMove[2], bestMove[3]);
+        }
+        lastMove = new int[]{bestMove[0], bestMove[1], bestMove[2], bestMove[3]};
         totalMoves++;
         if(totalMoves == 12) {
             opening = false;
@@ -282,11 +299,11 @@ public class AutomatedBot {
     }
 
     private void makeMove() {
+        lastMove = new int[]{-1, -1, -1, -1};
         System.out.println("Entering makeMove()");
         if (Piece.check) {
             System.out.println("King is in check. Handling check situation.");
             handleCheckSituation();
-            Piece.check = false;
         } else if (!attemptCheckmate()) {
             System.out.println("No checkmate attempt possible. Preventing opponent checkmate.");
             if (!preventOpponentCheckmate()) {
@@ -332,6 +349,7 @@ public class AutomatedBot {
                     } else if (middleGame) {
                         System.out.println("Making a middle game move.");
                         makeAMiddleGameMove(pieces, score, pInfo, oppPInfo);
+                        isEndGame();
                     } else if (endGame) {
                         System.out.println("Making an end game move.");
                         makeAnEndGameMove(pieces, score);
@@ -341,6 +359,33 @@ public class AutomatedBot {
         }
 
         System.out.println("Exiting makeMove() with lastMove: " + lastMove[0] + ", " + lastMove[1] + ", " + lastMove[2] + ", " + lastMove[3]);
+    }
+
+    private void isEndGame() {
+        int piecesCount = 0;
+        int oppPiecesCount = 0;
+        ArrayList<ArrayList<Piece>> pieces = model.isWhiteTurn() ? model.getWhitePieces() : model.getBlackPieces();
+        ArrayList<ArrayList<Piece>> opponentPieces = model.isWhiteTurn() ? model.getBlackPieces() : model.getWhitePieces();
+        for (ArrayList<Piece> pieceList : pieces) {
+            for (Piece piece : pieceList) {
+                if (piece instanceof Knight || piece instanceof Bishop ||
+                        piece instanceof Rook || piece instanceof Queen) {
+                    piecesCount++;
+                }
+            }
+        }
+        for (ArrayList<Piece> pieceList : opponentPieces) {
+            for (Piece piece : pieceList) {
+                if (piece instanceof Knight || piece instanceof Bishop ||
+                        piece instanceof Rook || piece instanceof Queen) {
+                    oppPiecesCount++;
+                }
+            }
+        }
+        if (piecesCount < 4 && oppPiecesCount < 4) {
+            endGame = true;
+            middleGame = false;
+        }
     }
 
     private boolean chechIfMoveHasBeenMade(int [] move) {
@@ -504,7 +549,7 @@ public class AutomatedBot {
 
     private boolean makeBestMoveInvolvingKing(ArrayList<ArrayList<Piece>> pieces) {
         System.out.println("Making the best move involving the King.");
-        ArrayList<Piece> weakOpponentPawns = findWeakPawns(pieces.get(0).get(0).isWhite() ? model.getBlackPieces() : model.getWhitePieces()); // Get weak opponent pawns
+        ArrayList<Piece> weakOpponentPawns = findWeakPawns(pieces.get(5).get(0).isWhite() ? model.getBlackPieces() : model.getWhitePieces()); // Get weak opponent pawns
         double maxScore = -Double.MAX_VALUE;
         int[] bestMoveStart = {-1, -1};
         int[] bestMoveEnd = {-1, -1};
@@ -686,7 +731,7 @@ public class AutomatedBot {
         long kingPos = king.getBitboard();
         poStart = movePositionToRowCol(kingPos);
         double evaluation = pieces.get(0).get(0).isWhite() ? Finals.WhitePiecePosition[0][poStart[0]][poStart[1]] : Finals.BlackPiecePosition[0][poStart[0]][poStart[1]];
-        if(evaluation > 2) {
+        if(evaluation < 2) {
             ArrayList<Piece> rooks = pieces.get(3);
             for(Piece r : rooks) {
                 double s = simulateMoveAndEvaluate(king, r.getBitboard(), true);
@@ -1097,7 +1142,7 @@ public class AutomatedBot {
 
     public double evaluatePiece(Piece p, int i, ArrayList<ArrayList<Piece>> pieces) {
         int [] piecePos = movePositionToRowCol(p.getBitboard());
-        double score = p.getWeight();
+        double score = 0;
         if(p.isWhite()) {
             score += Finals.WhitePiecePosition[i][piecePos[0]][piecePos[1]];
         }
@@ -1117,14 +1162,15 @@ public class AutomatedBot {
     // Enhanced evaluatePosition with improved heuristics
     private double evaluatePosition(ArrayList<ArrayList<Piece>> pieces, Model model) {
         double score = 0;
-        if (model.isCheckmate(!pieces.get(0).get(0).isWhite())) return Double.MAX_VALUE;
-
+        if (model.isCheckmate(!pieces.get(5).get(0).isWhite())) return Double.MAX_VALUE;
+        int weight = 0;
         for (ArrayList<Piece> pieceList : pieces) {
             for (Piece p : pieceList) {
                 score += evaluatePiece(p, piecePosIndex(p), pieces);
                 score += evaluateMobility(p, model);
                 score += evaluateCenterControl(p, model);
                 score += evaluateActivity(p);
+                weight += p.getWeight();
                 if (p instanceof WhitePawn || p instanceof BlackPawn) {
                     score += evaluatePawnStructure(p, pieces);
                 }
@@ -1139,7 +1185,7 @@ public class AutomatedBot {
             }
         }
         King king = (King) pieces.get(5).get(0);
-        return (score + getKingSaftey(king.getBitboard(), pieces)) * 0.1;
+        return (score + getKingSaftey(king.getBitboard(), pieces)) * 0.1 + weight;
     }
 
     private double evaluateMobility(Piece p, Model model) {
@@ -1283,7 +1329,7 @@ public class AutomatedBot {
         // Masks for file boundaries
         long notAFile = 0xFEFEFEFEFEFEFEFEL; // Exclude A-file
         long notHFile = 0x7F7F7F7F7F7F7F7FL; // Exclude H-file
-        long ownPieces = pieces.get(0).get(0).isWhite() ? Piece.whitePieces : Piece.blackPieces;
+        long ownPieces = pieces.get(5).get(0).isWhite() ? Piece.whitePieces : Piece.blackPieces;
 
         // Get all pawns of the king's color
         ArrayList<Piece> ownPawns = pieces.get(0);

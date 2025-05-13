@@ -327,19 +327,14 @@ public class Model {
             }
         }
 
+        if(Piece.check)
+            Piece.check = false;
         // Toggle the turn and reset the state
         isWhiteTurn = !isWhiteTurn;
         possibleMoves = 0L;
         selectedPiece = null;
         enPassantPosition = 0L;
 
-        if (isCheckmate(isWhiteTurn)) {
-            if(isKingInCheck(isWhiteTurn)) {
-                System.out.println((isWhiteTurn ? "Black" : "White") + " checkmate !!!");
-            } else {
-                System.out.println("stalemate !!!");
-            }
-        }
         // Check if the move puts the opponent's king in check
         if (isKingInCheck(isWhiteTurn)) {
             System.out.println((isWhiteTurn ? "White" : "Black") + " king is in check!");

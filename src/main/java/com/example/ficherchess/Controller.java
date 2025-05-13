@@ -1,7 +1,9 @@
 package com.example.ficherchess;
 
 import com.example.ficherchess.Pieces.King;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
 import javafx.scene.layout.GridPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -275,5 +277,19 @@ public class Controller implements IView {
                 square.getChildren().removeIf(child -> child instanceof Circle && ((Circle) child).getOpacity() == 0.5);
             }
         }
+    }
+
+    @Override
+    public void showGameOverScene(String message) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Game Over");
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+            alert.showAndWait();
+            // Optionally, exit or reset the game:
+            // System.exit(0);
+            // or call a restart method
+        });
     }
 }
