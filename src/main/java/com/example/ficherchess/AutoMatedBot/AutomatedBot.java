@@ -207,6 +207,7 @@ public class AutomatedBot {
         boolean tempmiddleGame = middleGame;
         boolean tempendGame = endGame;
         int temptotalMoves = totalMoves;
+        isEndGame();
         long allPieces = Piece.allPieces;
         long whitePieces = Piece.whitePieces;
         long blackPieces = Piece.blackPieces;
@@ -292,6 +293,7 @@ public class AutomatedBot {
             opening = false;
             middleGame = true;
         }
+        isEndGame();
         return lastMove;
     }
 
