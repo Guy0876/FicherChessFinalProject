@@ -204,6 +204,15 @@ public class Controller implements IView {
                     }
                 }
                 if (!castle) {
+                    if(piece.getUserData().toString().contains("pawn")) {
+                        if (isWhiteMove && newRow == 0) {
+                            piece.setImage(new Image(getClass().getResourceAsStream("/pieces/white-queen.png")));
+                            piece.setUserData("white-queen.png");
+                        } else if (!isWhiteMove && newRow == 7) {
+                            piece.setImage(new Image(getClass().getResourceAsStream("/pieces/black-queen.png")));
+                            piece.setUserData("black-queen.png");
+                        }
+                    }
                     newSquare.getChildren().add(piece);
                 } else {
                     if (white) {

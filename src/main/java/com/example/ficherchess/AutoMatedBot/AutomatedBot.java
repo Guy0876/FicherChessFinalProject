@@ -223,26 +223,57 @@ public class AutomatedBot {
             makeMove();
             if(lastMove[0] == -1) {
                 System.out.println("No move made. Exiting makeBestMove.");
+                restoreStatics(allPieces, whitePieces, blackPieces, check);
                 continue;
             }
             moveSums[i] = new MoveSum(lastMove, 0);
+            if(model.isCheckmate(model.isWhiteTurn())) {
+                moveSums[i].setScore(Double.MAX_VALUE);
+                restoreStatics(allPieces, whitePieces, blackPieces, check);
+                depth = 0;
+                continue;
+            }
             depth++;
             makeMove();
+            if(model.isCheckmate(model.isWhiteTurn())) {
+                moveSums[i].setScore(-Double.MAX_VALUE);
+                restoreStatics(allPieces, whitePieces, blackPieces, check);
+                depth = 0;
+                continue;
+            }
             if(lastMove[0] == -1) {
                 System.out.println("No move made. Exiting makeBestMove.");
                 moveSums[i] = null;
+                depth = 0;
+                restoreStatics(allPieces, whitePieces, blackPieces, check);
                 continue;
             }
             makeMove();
+            if(model.isCheckmate(model.isWhiteTurn())) {
+                moveSums[i].setScore(Double.MAX_VALUE);
+                restoreStatics(allPieces, whitePieces, blackPieces, check);
+                depth = 0;
+                continue;
+            }
             if(lastMove[0] == -1) {
                 System.out.println("No move made. Exiting makeBestMove.");
                 moveSums[i] = null;
+                depth = 0;
+                restoreStatics(allPieces, whitePieces, blackPieces, check);
                 continue;
             }
             makeMove();
+            if(model.isCheckmate(model.isWhiteTurn())) {
+                moveSums[i].setScore(-Double.MAX_VALUE);
+                restoreStatics(allPieces, whitePieces, blackPieces, check);
+                depth = 0;
+                continue;
+            }
             if(lastMove[0] == -1) {
                 System.out.println("No move made. Exiting makeBestMove.");
                 moveSums[i] = null;
+                depth = 0;
+                restoreStatics(allPieces, whitePieces, blackPieces, check);
                 continue;
             }
             ArrayList<ArrayList<Piece>> pieces = whiteTurn ? model.getWhitePieces() : model.getBlackPieces();
@@ -343,7 +374,18 @@ public class AutomatedBot {
                         if(!takeBestWayPossible(oppPInfo.getPiece(), pieces)) {
                             makeSafeBestMove();
                         }
-                    } else if (opening) {
+                        System.out.println("Exiting makeMove() with lastMove: " + lastMove[0] + ", " + lastMove[1] + ", " + lastMove[2] + ", " + lastMove[3]);
+                        return;
+                    }
+                    System.out.println("Trying to promote a pawn.");
+                    for(int i = 0; i < pieces.get(0).size(); i++) {
+                        Piece piece = pieces.get(0).get(i);
+                        if(promotePawn(piece)) {
+                            System.out.println("Exiting makeMove() with lastMove: " + lastMove[0] + ", " + lastMove[1] + ", " + lastMove[2] + ", " + lastMove[3]);
+                            return;
+                        }
+                    }
+                    if (opening) {
                         System.out.println("Making an opening move.");
                         makeAnOpeningMove(pieces, score);
                         totalMoves++;
@@ -540,16 +582,13 @@ public class AutomatedBot {
         int promotionRow = pawn.isWhite() ? 0 : 7; // Promotion row for white is rank 0, for black is rank 7
         // Move the pawn step by step toward the promotion row
         int[] nextRowCol = {pawnRowCol[0] + direction, pawnRowCol[1]};
+        if(nextRowCol[0] != promotionRow) {
+            return false; // Pawn cant promote
+        }
         if(chechIfMoveHasBeenMade(new int[]{pawnRowCol[0], pawnRowCol[1], nextRowCol[0], nextRowCol[1]}) && depth == 0) {return false;}
         model.setSelectedPiece(pawnRowCol[0], pawnRowCol[1]);
         lastMove = new int[]{pawnRowCol[0], pawnRowCol[1], pawnRowCol[0] + direction, pawnRowCol[1]};
         model.updateTurn(pawnRowCol[0], pawnRowCol[1], pawnRowCol[0] + direction, pawnRowCol[1]);
-        pawnRowCol = nextRowCol;
-        if(pawnRowCol[0] == promotionRow) {
-            // Replace the pawn with a Queen (or another piece)
-            Piece promotedPiece = new Queen(1L << (promotionRow * 8 + pawnRowCol[1]), pawn.isWhite());
-            model.replacePiece(pawn, promotedPiece);
-        }
         return true;
     }
 
@@ -736,25 +775,22 @@ public class AutomatedBot {
         King king = (King)pieces.get(5).get(0);
         long kingPos = king.getBitboard();
         poStart = movePositionToRowCol(kingPos);
-        double evaluation = pieces.get(5).get(0).isWhite() ? Finals.WhitePiecePosition[0][poStart[0]][poStart[1]] : Finals.BlackPiecePosition[0][poStart[0]][poStart[1]];
-        if(evaluation < 2) {
-            ArrayList<Piece> rooks = pieces.get(3);
-            for(Piece r : rooks) {
-                double s = simulateMoveAndEvaluate(king, r.getBitboard(), true);
-                int [] movePosition = movePositionToRowCol(r.getBitboard());
-                if(chechIfMoveHasBeenMade(new int[]{poStart[0], poStart[1], movePosition[0], movePosition[1]}) && depth == 0) {continue;}
-                if(s > maxPos) {
-                    maxPos = s;
-                    max = movePosition;
-                }
+        ArrayList<Piece> rooks = pieces.get(3);
+        for(Piece r : rooks) {
+            double s = simulateMoveAndEvaluate(king, r.getBitboard(), true);
+            int [] movePosition = movePositionToRowCol(r.getBitboard());
+            if(chechIfMoveHasBeenMade(new int[]{poStart[0], poStart[1], movePosition[0], movePosition[1]}) && depth == 0) {continue;}
+            if(s > maxPos) {
+                maxPos = s;
+                max = movePosition;
             }
-            if(score != -Double.MAX_VALUE) {
-                if(max[0] != -1 && max[1] != -1 && maxPos > score) {
-                    model.setSelectedPiece(poStart[0], poStart[1]);
-                    lastMove = new int[]{poStart[0], poStart[1], max[0], max[1]};
-                    model.isLegalMove(poStart[0], poStart[1], max[0], max[1]);
-                    return;
-                }
+        }
+        if(score != -Double.MAX_VALUE) {
+            if(max[0] != -1 && max[1] != -1 && maxPos > score) {
+                model.setSelectedPiece(poStart[0], poStart[1]);
+                lastMove = new int[]{poStart[0], poStart[1], max[0], max[1]};
+                model.isLegalMove(poStart[0], poStart[1], max[0], max[1]);
+                return;
             }
         }
         if(score >= 4) {

@@ -251,6 +251,13 @@ public class Model {
 
         // Update the piece's position
         selectedPiece.setBitboard((selectedPiece.getBitboard() & ~oldPosition) | newPosition);
+        if (selectedPiece instanceof WhitePawn || selectedPiece instanceof BlackPawn) {
+            if(newRow == 0 || newRow == 7) {
+                Piece promotedPiece = selectedPiece.isWhite() ? new Queen(newPosition, true) : new Queen(newPosition, false);
+                replacePiece(selectedPiece, promotedPiece);
+                selectedPiece = promotedPiece;
+            }
+        }
         if ((enPassantPosition & newPosition) != 0 && (selectedPiece instanceof WhitePawn || selectedPiece instanceof BlackPawn)) {
             if (isWhiteTurn) {
                 enPassantPosition = indexToBitboard(newRow + 1, newCol);
@@ -624,24 +631,18 @@ public class Model {
     }
 
     public void replacePiece(Piece pawn, Piece promotedPiece) {
-    }
-    public Piece getPieceAt(int row, int col) {
-        long bitboard = indexToBitboard(row, col);
-        for (ArrayList<Piece> pieceList : whitePieces) {
-            for (Piece piece : pieceList) {
-                if ((piece.getBitboard() & bitboard) != 0) {
-                    return piece;
+        ArrayList<ArrayList<Piece>> pieces = pawn.isWhite() ? whitePieces : blackPieces;
+        for (ArrayList<Piece> pieceList : pieces) {
+            Iterator<Piece> iterator = pieceList.iterator();
+            while (iterator.hasNext()) {
+                Piece piece = iterator.next();
+                if (piece.getBitboard() == pawn.getBitboard()) {
+                    iterator.remove();  // safe removal
                 }
             }
         }
-        for (ArrayList<Piece> pieceList : blackPieces) {
-            for (Piece piece : pieceList) {
-                if ((piece.getBitboard() & bitboard) != 0) {
-                    return piece;
-                }
-            }
-        }
-        return null;
+        pieces.get(4).add(promotedPiece); // Add to the queen list
     }
+
 }
 
