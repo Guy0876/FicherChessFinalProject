@@ -284,11 +284,15 @@ public class AutomatedBot {
             depth = 0;
             restoreStatics(allPieces, whitePieces, blackPieces, check);
         }
-        int [] bestMove = {-1, -1, -1, -1};
-        double maxScore = -Double.MAX_VALUE;
-        for(int i = 0; i < 5; i++) {
-            if (moveSums[i] != null) {
-                if (moveSums[i].getScore() > maxScore) {
+        int i = 0;
+        while(moveSums[i] == null){
+            i++;
+        }
+        int [] bestMove = moveSums[i].getMove();
+        double maxScore = moveSums[i].getScore();
+        for(int j = i + 1; j < 5; j++) {
+            if (moveSums[j] != null) {
+                if (moveSums[j].getScore() > maxScore) {
                     bestMove = moveSums[i].getMove();
                     maxScore = moveSums[i].getScore();
                 }
